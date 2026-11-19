@@ -69,7 +69,7 @@ class PlayerActivity : ComponentActivity() {
         val catchupMode = intent.getStringExtra("catchup").orEmpty()
         val catchupSource = intent.getStringExtra("catchupSource").orEmpty()
         val catchupDays = intent.getIntExtra("catchupDays", 0)
-        showArchiveButton = catchupMode.isNotBlank() && !catchupMode.equals("none", true) && !catchupMode.equals("disabled", true)
+        showArchiveButton = catchupMode.isNotBlank() && catchupSource.isNotBlank() && !catchupMode.equals("none", true) && !catchupMode.equals("disabled", true)
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
         epgUrl = prefs.getString("xmltv_url", "") ?: ""
 
@@ -168,12 +168,29 @@ class PlayerActivity : ComponentActivity() {
 
                         if (showArchiveButton) {
                             OutlinedButton(
-                                onClick = { openArchivePicker(stream, catchupMode, catchupSource, catchupDays, title) },
+                                onClick = { openArchivePicker(stream, catchupMode, catchupSource, catchupDays) },
                                 modifier = Modifier.fillMaxWidth(),
                                 border = BorderStroke(1.dp, PlayerGold),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerGold)
                             ) {
                                 Text("АРХИВ ПЕРЕДАЧ")
+                            }
+                            if (isArchivePlayback) {
+                                OutlinedButton(
+                                    onClick = {
+                                        retryAttempts = 0
+                                        playbackError = false
+                                        isArchivePlayback = false
+                                        player?.setMediaItem(MediaItem.fromUri(stream))
+                                        player?.prepare()
+                                        player?.play()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    border = BorderStroke(1.dp, PlayerLine),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerParchment)
+                                ) {
+                                    Text("ВЕРНУТЬСЯ К ПРЯМОМУ ЭФИРУ")
+                                }
                             }
                         }
 
@@ -327,8 +344,7 @@ class PlayerActivity : ComponentActivity() {
         liveUrl: String,
         mode: String,
         source: String,
-        availableDays: Int,
-        title: String
+        availableDays: Int
     ) {
         val now = Calendar.getInstance()
         val earliest = Calendar.getInstance().apply {
