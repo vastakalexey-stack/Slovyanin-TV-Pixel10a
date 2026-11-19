@@ -1,6 +1,8 @@
 package ru.pixel10a.slovyanintv
 
 import android.os.Bundle
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
@@ -34,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Calendar
 import java.util.Locale
 
 private val PlayerNight = Color(0xFF100F0D)
@@ -55,12 +58,18 @@ class PlayerActivity : ComponentActivity() {
     private var showEpg by mutableStateOf(false)
     private var showEpgSettings by mutableStateOf(false)
     private var epgUrl by mutableStateOf("")
+    private var showArchiveButton by mutableStateOf(false)
+    private var isArchivePlayback by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val stream = intent.getStringExtra("url") ?: run { finish(); return }
         val title = intent.getStringExtra("name") ?: "Трансляция"
         val tvgId = intent.getStringExtra("tvgId").orEmpty()
+        val catchupMode = intent.getStringExtra("catchup").orEmpty()
+        val catchupSource = intent.getStringExtra("catchupSource").orEmpty()
+        val catchupDays = intent.getIntExtra("catchupDays", 0)
+        showArchiveButton = catchupMode.isNotBlank() && !catchupMode.equals("none", true) && !catchupMode.equals("disabled", true)
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
         epgUrl = prefs.getString("xmltv_url", "") ?: ""
 
@@ -137,7 +146,7 @@ class PlayerActivity : ComponentActivity() {
                                     Spacer(Modifier.width(10.dp))
                                     Column(Modifier.weight(1f)) {
                                         Text(title, color = PlayerParchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                        Text("ПРЯМОЙ ЭФИР", color = PlayerGold, style = MaterialTheme.typography.labelSmall)
+                                        Text(if (isArchivePlayback) "АРХИВНАЯ ЗАПИСЬ" else "ПРЯМОЙ ЭФИР", color = PlayerGold, style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                                 AndroidView(
@@ -154,6 +163,17 @@ class PlayerActivity : ComponentActivity() {
                                     update = { it.player = player },
                                     modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black, RoundedCornerShape(12.dp))
                                 )
+                            }
+                        }
+
+                        if (showArchiveButton) {
+                            OutlinedButton(
+                                onClick = { openArchivePicker(stream, catchupMode, catchupSource, catchupDays, title) },
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(1.dp, PlayerGold),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerGold)
+                            ) {
+                                Text("АРХИВ ПЕРЕДАЧ")
                             }
                         }
 
@@ -301,6 +321,64 @@ class PlayerActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun openArchivePicker(
+        liveUrl: String,
+        mode: String,
+        source: String,
+        availableDays: Int,
+        title: String
+    ) {
+        val now = Calendar.getInstance()
+        val earliest = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, -(availableDays.takeIf { it > 0 } ?: 7))
+        }
+        DatePickerDialog(
+            this,
+            { _, year, month, day ->
+                val selected = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, day)
+                }
+                TimePickerDialog(
+                    this,
+                    { _, hour, minute ->
+                        selected.set(Calendar.HOUR_OF_DAY, hour)
+                        selected.set(Calendar.MINUTE, minute)
+                        selected.set(Calendar.SECOND, 0)
+                        selected.set(Calendar.MILLISECOND, 0)
+                        val archiveUrl = CatchupUrlBuilder.build(
+                            liveUrl = liveUrl,
+                            mode = mode,
+                            source = source,
+                            startMillis = selected.timeInMillis
+                        )
+                        if (archiveUrl == null) {
+                            playbackError = true
+                            return@TimePickerDialog
+                        }
+                        retryHandler.removeCallbacksAndMessages(null)
+                        retryAttempts = 0
+                        playbackError = false
+                        isArchivePlayback = true
+                        player?.setMediaItem(MediaItem.fromUri(archiveUrl))
+                        player?.prepare()
+                        player?.play()
+                    },
+                    now.get(Calendar.HOUR_OF_DAY),
+                    now.get(Calendar.MINUTE),
+                    true
+                ).show()
+            },
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH),
+            now.get(Calendar.DAY_OF_MONTH)
+        ).apply {
+            datePicker.maxDate = System.currentTimeMillis()
+            datePicker.minDate = earliest.timeInMillis
+        }.show()
     }
 
     override fun onStop() {
