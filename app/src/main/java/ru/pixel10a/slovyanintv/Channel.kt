@@ -12,6 +12,6 @@ data class Channel(
     val catchupDays: Int = 0
 ) {
     val hasArchive: Boolean
-        get() = catchupSource.isNotBlank() || catchup.equals("default", true) ||
-            catchup.equals("append", true) || catchup.equals("shift", true)
+        get() = catchupSource.isNotBlank() && catchup.isNotBlank() &&
+            !catchup.equals("none", true) && !catchup.equals("disabled", true)
 }
