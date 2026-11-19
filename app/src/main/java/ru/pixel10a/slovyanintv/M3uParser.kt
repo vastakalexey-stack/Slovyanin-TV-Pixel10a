@@ -7,6 +7,9 @@ object M3uParser {
         var group = "Без категории"
         var logo: String? = null
         var tvgId = ""
+        var catchup = ""
+        var catchupSource = ""
+        var catchupDays = 0
 
         text.lineSequence().forEach { raw ->
             val line = raw.trim()
@@ -17,6 +20,9 @@ object M3uParser {
                 group = attrs["group-title"]?.ifBlank { "Без категории" } ?: "Без категории"
                 logo = attrs["tvg-logo"]?.takeIf { it.isNotBlank() }
                 tvgId = attrs["tvg-id"]?.trim().orEmpty()
+                catchup = attrs["catchup"]?.trim().orEmpty()
+                catchupSource = attrs["catchup-source"]?.trim().orEmpty()
+                catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceIn(0, 30) ?: 0
             } else if (line.isNotEmpty() && !line.startsWith("#") &&
                 (line.startsWith("http://") || line.startsWith("https://"))) {
                 val channel = Channel(
@@ -31,7 +37,7 @@ object M3uParser {
                 name = ""
                 group = "Без категории"
                 logo = null
-                tvgId = ""
+                tvgId = ""\n                catchup = ""\n                catchupSource = ""\n                catchupDays = 0
             }
         }
         return result.distinctBy { it.url }
