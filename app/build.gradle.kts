@@ -6,7 +6,7 @@ plugins {
 android {
     namespace = "ru.pixel10a.slovyanintv"
     compileSdk = 36
-    defaultConfig { applicationId = "ru.pixel10a.slovyanintv"; minSdk = 26; targetSdk = 35; versionCode = 4; versionName = "1.3.0" }
+    defaultConfig { applicationId = "ru.pixel10a.slovyanintv"; minSdk = 26; targetSdk = 35; versionCode = 5; versionName = "1.4.0" }
     signingConfigs {
         create("release") {
             val storePath = System.getenv("SIGNING_STORE_FILE")
