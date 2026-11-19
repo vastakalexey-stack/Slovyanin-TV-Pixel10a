@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
             var selectedGroup by remember { mutableStateOf("Все") }
-            val channels = imported.value
+            val channels = imported.value.filter(ChannelPolicy::keep).map { it.copy(group = ChannelPolicy.displayGroup(it.group)) }
             val groups = listOf("Все", "Избранное") + channels.map { it.group }.distinct().sorted()
             val shown = channels.filter {
                 (selectedGroup == "Все" || (selectedGroup == "Избранное" && it.url in favorites) || it.group == selectedGroup) &&
