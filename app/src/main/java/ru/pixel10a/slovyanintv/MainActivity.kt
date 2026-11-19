@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         restoreData()
+        importIncomingIntent(intent)
         if (imported.value.isEmpty()) {
             lifecycleScope.launch {
                 try {
@@ -341,6 +342,51 @@ class MainActivity : ComponentActivity() {
                     },
                     dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Отмена", color = Muted) } }
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        importIncomingIntent(intent)
+    }
+
+    private fun importIncomingIntent(incoming: Intent?) {
+        if (incoming == null) return
+        val sharedUri = incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+        if (sharedUri != null) {
+            loadFile(sharedUri)
+            return
+        }
+        val sharedText = incoming.getStringExtra(Intent.EXTRA_TEXT)?.trim().orEmpty()
+        val viewUri = incoming.data
+        val candidate = sharedText.ifBlank { viewUri?.toString().orEmpty() }
+        if (candidate.isBlank()) return
+
+        if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
+            lifecycleScope.launch {
+                try {
+                    val body = withContext(Dispatchers.IO) {
+                        URL(candidate).openConnection().apply {
+                            connectTimeout = 15000
+                            readTimeout = 30000
+                        }.getInputStream().bufferedReader().use { it.readText() }
+                    }
+                    val importedChannels = M3uParser.parse(body, "AM Vision IPTV — импорт")
+                    if (importedChannels.isNotEmpty()) {
+                        imported.value = (imported.value + importedChannels).distinctBy { it.url }
+                        persistData()
+                    }
+                } catch (_: Exception) {
+                    // Unsupported or protected sources are not imported.
+                }
+            }
+        } else if (candidate.startsWith("#EXTM3U") || candidate.contains("#EXTINF")) {
+            val importedChannels = M3uParser.parse(candidate, "AM Vision IPTV — импорт")
+            if (importedChannels.isNotEmpty()) {
+                imported.value = (imported.value + importedChannels).distinctBy { it.url }
+                persistData()
             }
         }
     }
