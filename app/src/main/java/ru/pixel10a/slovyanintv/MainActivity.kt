@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +48,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         restoreData()
+        if (imported.value.isEmpty()) {
+            lifecycleScope.launch {
+                try {
+                    val body = withContext(Dispatchers.IO) {
+                        URL("https://iptv-org.github.io/iptv/languages/rus.m3u")
+                            .openConnection().apply {
+                                connectTimeout = 15000
+                                readTimeout = 20000
+                            }.getInputStream().bufferedReader().use { it.readText() }
+                    }
+                    val initialChannels = M3uParser.parse(body, "Каталог IPTV-org — русский язык")
+                    if (imported.value.isEmpty() && initialChannels.isNotEmpty()) {
+                        imported.value = initialChannels.distinctBy { it.url }
+                        persistData()
+                    }
+                } catch (_: Exception) {
+                    // The catalog can also be loaded manually from the in-app catalog screen.
+                }
+            }
+        }
         setContent {
             var showDialog by remember { mutableStateOf(false) }
             var showCatalogDialog by remember { mutableStateOf(false) }
