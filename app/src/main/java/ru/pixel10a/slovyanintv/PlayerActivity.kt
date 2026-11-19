@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,11 +62,21 @@ class PlayerActivity : ComponentActivity() {
     private var epgUrl by mutableStateOf("")
     private var showArchiveButton by mutableStateOf(false)
     private var isArchivePlayback by mutableStateOf(false)
+    private var showStreamPicker by mutableStateOf(false)
+    private var selectedStreamIndex by mutableIntStateOf(0)
+    private var streamUrls: List<String> = emptyList()
+    private var streamLabels: List<String> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val stream = intent.getStringExtra("url") ?: run { finish(); return }
         val title = intent.getStringExtra("name") ?: "Трансляция"
+        streamUrls = intent.getStringArrayListExtra("streamUrls")?.filter { it.startsWith("http://") || it.startsWith("https://") }
+            ?.distinct().orEmpty().ifEmpty { listOf(stream) }
+        streamLabels = intent.getStringArrayListExtra("streamLabels").orEmpty()
+        if (streamLabels.size != streamUrls.size) {
+            streamLabels = streamUrls.indices.map { "Поток ${it + 1}" }
+        }
         val tvgId = intent.getStringExtra("tvgId").orEmpty()
         val catchupMode = intent.getStringExtra("catchup").orEmpty()
         val catchupSource = intent.getStringExtra("catchupSource").orEmpty()
@@ -148,6 +159,14 @@ class PlayerActivity : ComponentActivity() {
                                     Column(Modifier.weight(1f)) {
                                         Text(title, color = PlayerParchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                                         Text(if (isArchivePlayback) "АРХИВНАЯ ЗАПИСЬ" else "ПРЯМОЙ ЭФИР", color = PlayerGold, style = MaterialTheme.typography.labelSmall)
+                                        if (streamUrls.size > 1 && !isArchivePlayback) {
+                                            Text("АКТИВЕН: ${streamLabels.getOrElse(selectedStreamIndex) { "Поток ${selectedStreamIndex + 1}" }}", color = PlayerMuted, style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                    if (streamUrls.size > 1 && !isArchivePlayback) {
+                                        IconButton(onClick = { showStreamPicker = true }) {
+                                            Icon(Icons.Default.SwapHoriz, contentDescription = "Сменить поток", tint = PlayerGold)
+                                        }
                                     }
                                 }
                                 AndroidView(
@@ -243,6 +262,45 @@ class PlayerActivity : ComponentActivity() {
                         }
                     }
                 }
+
+                if (showStreamPicker) AlertDialog(
+                    onDismissRequest = { showStreamPicker = false },
+                    containerColor = PlayerCharcoal,
+                    titleContentColor = PlayerParchment,
+                    textContentColor = PlayerMuted,
+                    title = { Text("ВЫБОР ПОТОКА") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            streamUrls.forEachIndexed { index, url ->
+                                val selected = index == selectedStreamIndex
+                                OutlinedButton(
+                                    onClick = {
+                                        selectedStreamIndex = index
+                                        showStreamPicker = false
+                                        retryHandler.removeCallbacksAndMessages(null)
+                                        retryAttempts = 0
+                                        playbackError = false
+                                        isArchivePlayback = false
+                                        player?.setMediaItem(MediaItem.fromUri(url))
+                                        player?.prepare()
+                                        player?.play()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    border = BorderStroke(1.dp, if (selected) PlayerGold else PlayerLine),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = if (selected) PlayerGold else PlayerParchment)
+                                ) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(streamLabels.getOrElse(index) { "Поток ${index + 1}" }, modifier = Modifier.weight(1f))
+                                        if (selected) Text("✓", color = PlayerGold, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showStreamPicker = false }) { Text("ЗАКРЫТЬ", color = PlayerGold) }
+                    }
+                )
 
                 if (showEpg) AlertDialog(
                     onDismissRequest = { showEpg = false },
