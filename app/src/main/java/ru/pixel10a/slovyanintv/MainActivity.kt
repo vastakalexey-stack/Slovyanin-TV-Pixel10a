@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
                         TopAppBar(
                             title = {
                                 Column {
-                                    Text("ᚱ  СЛОВЯНИН ТВ  ᚱ", fontWeight = FontWeight.Black, color = Parchment)
+                                    Text("ᚱ  СЛАВЯНИН ТВ  ᚱ", fontWeight = FontWeight.Black, color = Parchment)
                                     Text("ТЕЛЕВИДЕНИЕ • В ДУХЕ ТРАДИЦИЙ", style = MaterialTheme.typography.labelSmall, color = Gold)
                                 }
                             },
@@ -169,7 +169,7 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = { showSettings = false }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else if (showAbout) {
-                            SlavicPanel(title = "О СЛОВЯНИН ТВ") {
+                            SlavicPanel(title = "О СЛАВЯНИН ТВ") {
                                 Text("Личный IPTV-плеер для собственных и разрешённых M3U/M3U8-источников.", color = Parchment)
                                 Text("Приложение не содержит готовых нелицензионных списков каналов.", color = Muted)
                                 TextButton(onClick = { showAbout = false }) { Text("Назад к каналам", color = Gold) }
