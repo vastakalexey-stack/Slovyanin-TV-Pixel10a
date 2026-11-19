@@ -19,7 +19,7 @@ object ChannelPolicy {
         "автомобил", "авто", "automotive", "automobile", "cars", "car tv", "motor",
         "shop", "shopping", "шоп", "магазин", "покуп",
         "auto", "busenes", "business", "cooking", "family", "legislative",
-        "oytbot", "youtube", "travel", "relax", "science",
+        "oytbot", "youtube", "travel", "relax", "science", "news", "culture", "education", "religion", "kids", "children",
         "детск", "культур", "новост", "образован", "религи"
     )
 
@@ -37,6 +37,19 @@ object ChannelPolicy {
 
     fun keep(channel: Channel): Boolean =
         !isSports(channel.name, channel.group) && !isExcludedCategory(channel.group)
+
+    /** Keep at most twenty regional entries; retain every other allowed channel. */
+    fun limitRegionalChannels(channels: List<Channel>): List<Channel> {
+        var regionalCount = 0
+        return channels.filter { channel ->
+            val regional = channel.group.contains("регион", ignoreCase = true) ||
+                channel.group.contains("regional", ignoreCase = true) ||
+                channel.group.contains("local", ignoreCase = true)
+            if (!regional) true
+            else if (regionalCount < 20) { regionalCount++; true }
+            else false
+        }
+    }
 
     /** Keep the playlist's original spelling and language without transliteration. */
     fun displayChannelName(raw: String): String = raw.trim().ifBlank { "Канал" }
