@@ -13,6 +13,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+      SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+      SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,12 +36,27 @@ jobs:
           packages: ''
       - name: Install Android platform and build tools
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+      - name: Configure persistent release signing
+        if: ${{ env.SIGNING_KEYSTORE_BASE64 != '' && env.SIGNING_STORE_PASSWORD != '' && env.SIGNING_KEY_ALIAS != '' && env.SIGNING_KEY_PASSWORD != '' }}
+        run: |
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/slovyanin-release.jks"
+          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/slovyanin-release.jks" >> "$GITHUB_ENV"
+      - name: Build signed release APK
+        if: ${{ env.SIGNING_KEYSTORE_BASE64 != '' && env.SIGNING_STORE_PASSWORD != '' && env.SIGNING_KEY_ALIAS != '' && env.SIGNING_KEY_PASSWORD != '' }}
+        run: |
+          gradle --no-daemon assembleRelease
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/Slovyanin-TV.apk
+      - name: Build debug APK (temporary signing only)
+        if: ${{ env.SIGNING_KEYSTORE_BASE64 == '' || env.SIGNING_STORE_PASSWORD == '' || env.SIGNING_KEY_ALIAS == '' || env.SIGNING_KEY_PASSWORD == '' }}
+        run: |
+          gradle --no-daemon assembleDebug
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Slovyanin-TV-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Slovyanin-TV-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Slovyanin-TV
+          path: dist/*.apk
           if-no-files-found: error
           retention-days: 14
