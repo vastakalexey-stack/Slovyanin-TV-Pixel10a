@@ -1,6 +1,8 @@
 package ru.pixel10a.slovyanintv
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -44,6 +46,8 @@ private val PlayerLine = Color(0xFF59452B)
 
 class PlayerActivity : ComponentActivity() {
     private var player: ExoPlayer? = null
+    private val retryHandler = Handler(Looper.getMainLooper())
+    private var retryAttempts = 0
     private var playbackError by mutableStateOf(false)
     private var epgLoading by mutableStateOf(false)
     private var epgError by mutableStateOf("")
@@ -62,9 +66,26 @@ class PlayerActivity : ComponentActivity() {
 
         player = ExoPlayer.Builder(this).build().also { exo ->
             exo.addListener(object : Player.Listener {
-                override fun onPlayerError(error: PlaybackException) { playbackError = true }
+                override fun onPlayerError(error: PlaybackException) {
+                    if (retryAttempts < 3) {
+                        val delayMs = 1500L * (retryAttempts + 1)
+                        retryAttempts++
+                        playbackError = false
+                        retryHandler.postDelayed({
+                            player?.let { activePlayer ->
+                                activePlayer.prepare()
+                                activePlayer.play()
+                            }
+                        }, delayMs)
+                    } else {
+                        playbackError = true
+                    }
+                }
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (playbackState == Player.STATE_READY) playbackError = false
+                    if (playbackState == Player.STATE_READY) {
+                        retryAttempts = 0
+                        playbackError = false
+                    }
                 }
             })
             exo.setMediaItem(MediaItem.fromUri(stream))
@@ -173,7 +194,7 @@ class PlayerActivity : ComponentActivity() {
                                 HorizontalDivider(color = PlayerLine)
                                 if (playbackError) {
                                     Text("Не удалось запустить этот поток. Возможно, источник временно недоступен, ссылка устарела или требуется авторизация.", color = Color(0xFFFFB4A9))
-                                    TextButton(onClick = { playbackError = false; player?.seekTo(0); player?.prepare(); player?.play() }) {
+                                    TextButton(onClick = { retryAttempts = 0; playbackError = false; player?.seekTo(0); player?.prepare(); player?.play() }) {
                                         Text("Повторить запуск", color = PlayerGold)
                                     }
                                 } else {
@@ -284,6 +305,7 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        retryHandler.removeCallbacksAndMessages(null)
         player?.release()
         player = null
     }
