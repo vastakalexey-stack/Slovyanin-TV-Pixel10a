@@ -14,7 +14,7 @@ object M3uParser {
         text.lineSequence().forEach { raw ->
             val line = raw.trim()
             if (line.startsWith("#EXTINF", true)) {
-                val attrs = Regex("""([A-Za-z0-9_-]+)="([^"]*)""").findAll(line)
+                val attrs = Regex("""([A-Za-z0-9_-]+)="([^"]*)"""").findAll(line)
                     .associate { it.groupValues[1].lowercase() to it.groupValues[2] }
                 name = line.substringAfterLast(',', "Канал").trim().ifBlank { "Канал" }
                 group = attrs["group-title"]?.ifBlank { "Без категории" } ?: "Без категории"
@@ -26,7 +26,7 @@ object M3uParser {
             } else if (line.isNotEmpty() && !line.startsWith("#") &&
                 (line.startsWith("http://") || line.startsWith("https://"))) {
                 val channel = Channel(
-                    name = name.ifBlank { "Канал" },
+                    name = ChannelPolicy.displayChannelName(name.ifBlank { "Канал" }),
                     url = line,
                     group = ChannelPolicy.displayGroup(group),
                     logo = logo,
