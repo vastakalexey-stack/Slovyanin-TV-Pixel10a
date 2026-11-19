@@ -236,7 +236,7 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             Row(
                                                 Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name))
+                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId))
                                                 }.padding(13.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
@@ -358,7 +358,8 @@ class MainActivity : ComponentActivity() {
                     url = item.optString("url"),
                     group = item.optString("group", "Без категории"),
                     logo = item.optString("logo").takeIf { it.isNotBlank() },
-                    playlist = item.optString("playlist")
+                    playlist = item.optString("playlist"),
+                    tvgId = item.optString("tvgId")
                 )
             }
             imported.value = restored
@@ -381,6 +382,7 @@ class MainActivity : ComponentActivity() {
                 put("group", channel.group)
                 put("logo", channel.logo ?: "")
                 put("playlist", channel.playlist)
+                put("tvgId", channel.tvgId)
             })
         }
         val favoriteArray = JSONArray()
