@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
             var showSearch by remember { mutableStateOf(false) }
             var search by remember { mutableStateOf("") }
             var showSettings by remember { mutableStateOf(false) }
+            var showPlaylists by remember { mutableStateOf(false) }
             var showAbout by remember { mutableStateOf(false) }
             var url by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
@@ -90,7 +91,7 @@ class MainActivity : ComponentActivity() {
                                 Box {
                                     IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Меню", tint = Gold) }
                                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Charcoal)) {
-                                        DropdownMenuItem(text = { Text("Мои плейлисты", color = Parchment) }, leadingIcon = { Icon(Icons.Default.PlaylistPlay, null, tint = Gold) }, onClick = { showMenu = false; showSettings = false; showAbout = false })
+                                        DropdownMenuItem(text = { Text("Мои плейлисты", color = Parchment) }, leadingIcon = { Icon(Icons.Default.PlaylistPlay, null, tint = Gold) }, onClick = { showMenu = false; showSettings = false; showAbout = false; showPlaylists = true })
                                         DropdownMenuItem(text = { Text("Настройки", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = Gold) }, onClick = { showMenu = false; showSettings = true; showAbout = false })
                                         DropdownMenuItem(text = { Text("О приложении", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Info, null, tint = Gold) }, onClick = { showMenu = false; showAbout = true; showSettings = false })
                                     }
@@ -114,7 +115,29 @@ class MainActivity : ComponentActivity() {
                             )
                             Spacer(Modifier.height(10.dp))
                         }
-                        if (showSettings) {
+                        if (showPlaylists) {
+                            SlavicPanel(title = "МОИ ПЛЕЙЛИСТЫ") {
+                                val playlistNames = channels.map { it.playlist.ifBlank { "Без названия" } }.distinct()
+                                if (playlistNames.isEmpty()) {
+                                    Text("Пока нет добавленных плейлистов.", color = Muted)
+                                } else {
+                                    playlistNames.forEach { playlistName ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(playlistName, color = Parchment, fontWeight = FontWeight.SemiBold)
+                                                Text("${channels.count { it.playlist.ifBlank { "Без названия" } == playlistName }} канал(ов)", color = Muted, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                            IconButton(onClick = {
+                                                imported.value = imported.value.filterNot { it.playlist.ifBlank { "Без названия" } == playlistName }
+                                                persistData()
+                                            }) { Icon(Icons.Default.Delete, "Удалить плейлист", tint = Gold) }
+                                        }
+                                        HorizontalDivider(color = Line)
+                                    }
+                                }
+                                TextButton(onClick = { showPlaylists = false }) { Text("Назад к каналам", color = Gold) }
+                            }
+                        } else if (showSettings) {
                             SlavicPanel(title = "НАСТРОЙКИ") {
                                 Text("Оформление: славянская ночная тема", color = Parchment)
                                 Text("Палитра: угольный камень, тёплая бронза и пергамент", color = Muted)
