@@ -1,7 +1,5 @@
 package ru.pixel10a.slovyanintv
 
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -14,7 +12,7 @@ object CatchupUrlBuilder {
         startMillis: Long,
         durationSeconds: Long = 4 * 60 * 60L
     ): String? {
-        if (mode.isBlank() || mode.equals("none", true) || mode.equals("disabled", true)) return null
+        if (mode.isBlank() || mode.equals("none", true) || mode.equals("disabled", true) || source.isBlank()) return null
         val utc = startMillis / 1000L
         val local = SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date(startMillis))
         val replacements = mapOf(
@@ -38,10 +36,6 @@ object CatchupUrlBuilder {
             acc.replace(key, value)
         }
         val resolved = when {
-            source.isBlank() -> when (mode.lowercase()) {
-                "default", "shift" -> encodedUrl
-                else -> null
-            }
             source.startsWith("http://", true) || source.startsWith("https://", true) ->
                 encodedSource
             mode.equals("append", true) || source.startsWith("?") || source.startsWith("&") ->
