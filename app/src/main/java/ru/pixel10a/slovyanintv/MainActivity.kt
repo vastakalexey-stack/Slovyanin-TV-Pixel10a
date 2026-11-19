@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
         restoreData()
         setContent {
             var showDialog by remember { mutableStateOf(false) }
+            var showCatalogDialog by remember { mutableStateOf(false) }
             var showMenu by remember { mutableStateOf(false) }
             var showSearch by remember { mutableStateOf(false) }
             var search by remember { mutableStateOf("") }
@@ -165,12 +166,15 @@ class MainActivity : ComponentActivity() {
                             }
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { openFile.launch(arrayOf("*/*")) }, border = BorderStroke(1.dp, Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = Parchment)) {
+                                OutlinedButton(onClick = { openFile.launch(arrayOf("*/*")) }, border = BorderStroke(1.dp, Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = Parchment), modifier = Modifier.weight(1f)) {
                                     Icon(Icons.Default.FileOpen, null, tint = Gold); Spacer(Modifier.width(6.dp)); Text("Импорт M3U")
                                 }
-                                Button(onClick = { showDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
+                                Button(onClick = { showDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night), modifier = Modifier.weight(1f)) {
                                     Icon(Icons.Default.AddLink, null); Spacer(Modifier.width(6.dp)); Text("Добавить ссылку")
                                 }
+                            }
+                            OutlinedButton(onClick = { showCatalogDialog = true }, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Gold), colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)) {
+                                Icon(Icons.Default.LiveTv, null); Spacer(Modifier.width(8.dp)); Text("ОТКРЫТЬ КАТАЛОГ КАНАЛОВ")
                             }
                             Spacer(Modifier.height(12.dp))
                             if (channels.isNotEmpty()) {
@@ -234,6 +238,57 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                if (showCatalogDialog) AlertDialog(
+                    onDismissRequest = { showCatalogDialog = false },
+                    containerColor = Charcoal,
+                    titleContentColor = Parchment,
+                    textContentColor = Muted,
+                    title = { Text("КАТАЛОГ КАНАЛОВ") },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Выберите открытый список. Каналы загружаются из внешнего источника; доступность зависит от вещателя и региона.")
+                            CatalogSources.forEach { source ->
+                                OutlinedButton(
+                                    onClick = {
+                                        showCatalogDialog = false
+                                        loading = true
+                                        error = ""
+                                        scope.launch {
+                                            try {
+                                                val body = withContext(Dispatchers.IO) {
+                                                    URL(source.url).openConnection().apply {
+                                                        connectTimeout = 15000
+                                                        readTimeout = 20000
+                                                    }.getInputStream().bufferedReader().use { it.readText() }
+                                                }
+                                                val parsed = M3uParser.parse(body, source.name)
+                                                if (parsed.isEmpty()) {
+                                                    error = "В списке «${source.title}» не найдено каналов."
+                                                } else {
+                                                    imported.value = (imported.value.filterNot { it.playlist == source.name } + parsed).distinctBy { it.url }
+                                                    persistData()
+                                                    selectedGroup = "Все"
+                                                }
+                                            } catch (_: Exception) {
+                                                error = "Не удалось загрузить «${source.title}». Проверьте интернет или попробуйте позже."
+                                            }
+                                            loading = false
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    border = BorderStroke(1.dp, Line),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Parchment)
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
+                                        Text(source.title, color = Gold, fontWeight = FontWeight.SemiBold)
+                                        Text(source.description, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = { TextButton(onClick = { showCatalogDialog = false }) { Text("Закрыть", color = Gold) } }
+                )
                 if (showDialog) AlertDialog(
                     onDismissRequest = { showDialog = false },
                     containerColor = Charcoal,
