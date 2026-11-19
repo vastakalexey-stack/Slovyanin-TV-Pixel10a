@@ -248,6 +248,7 @@ class MainActivity : ComponentActivity() {
                                                 Column(Modifier.weight(1f)) {
                                                     Text(channel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
                                                     Text(channel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                    if (channel.hasArchive) Text("Архив доступен", color = Gold, style = MaterialTheme.typography.labelSmall)
                                                 }
                                                 IconButton(onClick = { if (channel.url in favorites) favorites.remove(channel.url) else favorites.add(channel.url); persistData() }) {
                                                     Icon(Icons.Default.Favorite, null, tint = if (channel.url in favorites) Gold else Muted)
