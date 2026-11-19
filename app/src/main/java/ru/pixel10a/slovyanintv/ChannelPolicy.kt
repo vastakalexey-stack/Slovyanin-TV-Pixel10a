@@ -6,7 +6,7 @@ package ru.pixel10a.slovyanintv
  */
 object ChannelPolicy {
     private val sportsTerms = listOf(
-        "sport", "sports", "спорт", "спортив", "футбол", "football", "soccer",
+        "спорт", "спортив", "футбол", "football", "soccer",
         "хоккей", "hockey", "баскетбол", "basketball", "теннис", "tennis",
         "формула 1", "formula 1", "f1", "бокс", "boxing", "mma", "ufc",
         "wrestling", "борьб", "регби", "rugby", "volleyball", "волейбол",
@@ -18,7 +18,7 @@ object ChannelPolicy {
 
     fun isSports(name: String, group: String): Boolean {
         val value = "${name.lowercase()} ${group.lowercase()}"
-        return sportsTerms.any { value.contains(it) }
+        return Regex("""(?i)(?<![a-z])sports?(?![a-z])""").containsMatchIn(value) || sportsTerms.any { value.contains(it) }
     }
 
     fun keep(channel: Channel): Boolean = !isSports(channel.name, channel.group)
