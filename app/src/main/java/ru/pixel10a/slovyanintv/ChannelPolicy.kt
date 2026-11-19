@@ -16,8 +16,11 @@ object ChannelPolicy {
     )
 
     private val excludedCategoryTerms = listOf(
-        "автомобил", "авто", "automotive", "automobile", "cars",
-        "car tv", "motor", "shop", "shopping", "шоп", "магазин", "покуп"
+        "автомобил", "авто", "automotive", "automobile", "cars", "car tv", "motor",
+        "shop", "shopping", "шоп", "магазин", "покуп",
+        "auto", "busenes", "business", "cooking", "family", "legislative",
+        "oytbot", "youtube", "travel", "relax", "science",
+        "детск", "культур", "новост", "образован", "религи"
     )
 
     fun isSports(name: String, group: String): Boolean {
