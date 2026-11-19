@@ -1,8 +1,7 @@
 package ru.pixel10a.slovyanintv
 
 /**
- * Removes sports channels while preserving channel names exactly as supplied
- * by the playlist. English names remain English; Russian names remain Russian.
+ * Filters unwanted channel genres while preserving the original channel names.
  */
 object ChannelPolicy {
     private val sportsTerms = listOf(
@@ -16,13 +15,25 @@ object ChannelPolicy {
         "arena sport", "bein sports", "eleven sports", "канал футбол"
     )
 
+    private val excludedCategoryTerms = listOf(
+        "автомобил", "авто", "automotive", "automobile", "cars",
+        "car tv", "motor", "shop", "shopping", "шоп", "магазин", "покуп"
+    )
+
     fun isSports(name: String, group: String): Boolean {
         val value = "${name.lowercase()} ${group.lowercase()}"
         return Regex("""(?i)(?<![a-z])sports?(?![a-z])""").containsMatchIn(value) ||
             sportsTerms.any { value.contains(it) }
     }
 
-    fun keep(channel: Channel): Boolean = !isSports(channel.name, channel.group)
+    /** Exclude both the unwanted category and every channel assigned to it. */
+    fun isExcludedCategory(group: String): Boolean {
+        val value = group.lowercase().replace('_', ' ').replace('-', ' ').trim()
+        return excludedCategoryTerms.any { value.contains(it) }
+    }
+
+    fun keep(channel: Channel): Boolean =
+        !isSports(channel.name, channel.group) && !isExcludedCategory(channel.group)
 
     /** Keep the playlist's original spelling and language without transliteration. */
     fun displayChannelName(raw: String): String = raw.trim().ifBlank { "Канал" }
@@ -45,7 +56,6 @@ object ChannelPolicy {
             key.contains("relig") || key.contains("религ") -> "Религиозные"
             key.contains("local") || key.contains("регион") -> "Региональные"
             key.contains("classic") -> "Классика"
-            key.contains("auto") || key.contains("авто") -> "Автомобили"
             key.contains("culture") || key.contains("культур") -> "Культура"
             key.contains("education") || key.contains("образован") -> "Образование"
             else -> value
