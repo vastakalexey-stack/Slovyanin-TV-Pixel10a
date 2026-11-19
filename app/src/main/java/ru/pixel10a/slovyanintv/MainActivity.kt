@@ -84,7 +84,8 @@ class MainActivity : ComponentActivity() {
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
             var selectedGroup by remember { mutableStateOf("Все") }
-            val channels = imported.value.filter(ChannelPolicy::keep).map { it.copy(group = ChannelPolicy.displayGroup(it.group)) }
+            val rawChannels = imported.value.filter(ChannelPolicy::keep).map { it.copy(group = ChannelPolicy.displayGroup(it.group)) }
+            val channels = ChannelMerger.merge(rawChannels)
             val groups = listOf("Все", "Избранное") + channels.map { it.group }.distinct().sorted()
             val shown = channels.filter {
                 (selectedGroup == "Все" || (selectedGroup == "Избранное" && it.url in favorites) || it.group == selectedGroup) &&
@@ -152,7 +153,7 @@ class MainActivity : ComponentActivity() {
                             }
                         } else if (showPlaylists) {
                             SlavicPanel(title = "МОИ ПЛЕЙЛИСТЫ") {
-                                val playlistNames = channels.map { it.playlist.ifBlank { "Без названия" } }.distinct()
+                                val playlistNames = rawChannels.map { it.playlist.ifBlank { "Без названия" } }.distinct()
                                 if (playlistNames.isEmpty()) {
                                     Text("Пока нет добавленных плейлистов.", color = Muted)
                                 } else {
@@ -160,7 +161,7 @@ class MainActivity : ComponentActivity() {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Column(Modifier.weight(1f)) {
                                                 Text(playlistName, color = Parchment, fontWeight = FontWeight.SemiBold)
-                                                Text("${channels.count { it.playlist.ifBlank { "Без названия" } == playlistName }} канал(ов)", color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                Text("${rawChannels.count { it.playlist.ifBlank { "Без названия" } == playlistName }} канал(ов)", color = Muted, style = MaterialTheme.typography.labelSmall)
                                             }
                                             IconButton(onClick = {
                                                 imported.value = imported.value.filterNot { it.playlist.ifBlank { "Без названия" } == playlistName }
@@ -249,7 +250,7 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             Row(
                                                 Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId).putExtra("catchup", channel.catchup).putExtra("catchupSource", channel.catchupSource).putExtra("catchupDays", channel.catchupDays))
+                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId).putExtra("catchup", channel.catchup).putExtra("catchupSource", channel.catchupSource).putExtra("catchupDays", channel.catchupDays).putStringArrayListExtra("streamUrls", ArrayList(channel.streams.map { it.url })).putStringArrayListExtra("streamLabels", ArrayList(channel.streams.map { it.label.ifBlank { "Поток" } })))
                                                 }.padding(13.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
