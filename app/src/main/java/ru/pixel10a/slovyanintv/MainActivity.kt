@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.net.URL
 
 private val Night = Color(0xFF100F0D)
@@ -44,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        restoreData()
         setContent {
             var showDialog by remember { mutableStateOf(false) }
             var showMenu by remember { mutableStateOf(false) }
@@ -197,7 +200,7 @@ class MainActivity : ComponentActivity() {
                                                     Text(channel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
                                                     Text(channel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
                                                 }
-                                                IconButton(onClick = { if (channel.url in favorites) favorites.remove(channel.url) else favorites.add(channel.url) }) {
+                                                IconButton(onClick = { if (channel.url in favorites) favorites.remove(channel.url) else favorites.add(channel.url); persistData() }) {
                                                     Icon(Icons.Default.Favorite, null, tint = if (channel.url in favorites) Gold else Muted)
                                                 }
                                             }
@@ -231,7 +234,7 @@ class MainActivity : ComponentActivity() {
                                     val body = withContext(Dispatchers.IO) { URL(link).openStream().bufferedReader().use { it.readText() } }
                                     val parsed = M3uParser.parse(body, link.substringAfterLast('/').ifBlank { "Онлайн-плейлист" })
                                     if (parsed.isEmpty()) error = "В плейлисте не найдено каналов."
-                                    else imported.value = (channels + parsed).distinctBy { it.url }
+                                    else { imported.value = (channels + parsed).distinctBy { it.url }; persistData() }
                                 } catch (_: Exception) { error = "Не удалось загрузить плейлист. Проверьте ссылку и подключение." }
                                 loading = false; url = ""
                             }
@@ -243,10 +246,56 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun restoreData() {
+        val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
+        try {
+            val root = JSONObject(prefs.getString("library", "{}") ?: "{}")
+            val savedChannels = root.optJSONArray("channels") ?: JSONArray()
+            val restored = mutableListOf<Channel>()
+            for (i in 0 until savedChannels.length()) {
+                val item = savedChannels.optJSONObject(i) ?: continue
+                restored += Channel(
+                    name = item.optString("name"),
+                    url = item.optString("url"),
+                    group = item.optString("group", "Без категории"),
+                    logo = item.optString("logo").takeIf { it.isNotBlank() },
+                    playlist = item.optString("playlist")
+                )
+            }
+            imported.value = restored
+            val savedFavorites = root.optJSONArray("favorites") ?: JSONArray()
+            favorites.clear()
+            for (i in 0 until savedFavorites.length()) favorites.add(savedFavorites.optString(i))
+        } catch (_: Exception) {
+            imported.value = emptyList()
+            favorites.clear()
+        }
+    }
+
+    private fun persistData() {
+        val root = JSONObject()
+        val channelArray = JSONArray()
+        imported.value.forEach { channel ->
+            channelArray.put(JSONObject().apply {
+                put("name", channel.name)
+                put("url", channel.url)
+                put("group", channel.group)
+                put("logo", channel.logo ?: "")
+                put("playlist", channel.playlist)
+            })
+        }
+        val favoriteArray = JSONArray()
+        favorites.forEach { favoriteArray.put(it) }
+        root.put("channels", channelArray)
+        root.put("favorites", favoriteArray)
+        getSharedPreferences("slovyanin_tv", MODE_PRIVATE).edit()
+            .putString("library", root.toString()).apply()
+    }
+
     private fun loadFile(uri: Uri) {
         try {
             val body = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
-            imported.value = (imported.value + M3uParser.parse(body, uri.lastPathSegment ?: "Файл")).distinctBy { it.url }
+            imported.value = (imported.value + M3uParser.parse(body, uri.lastPathSegment ?: "Файл")).distinctBy { it.url }; persistData()
         } catch (_: Exception) { }
     }
 }
