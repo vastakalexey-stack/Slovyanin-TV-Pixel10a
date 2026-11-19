@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.SlovyaninTV" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/slovyanin_gold</item>
+        <item name="android:navigationBarColor">@color/slovyanin_background</item>
+        <item name="android:statusBarColor">@color/slovyanin_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
