@@ -7,6 +7,7 @@ object M3uParser {
         var group = "Без категории"
         var logo: String? = null
         var tvgId = ""
+
         text.lineSequence().forEach { raw ->
             val line = raw.trim()
             if (line.startsWith("#EXTINF", true)) {
@@ -18,13 +19,21 @@ object M3uParser {
                 tvgId = attrs["tvg-id"]?.trim().orEmpty()
             } else if (line.isNotEmpty() && !line.startsWith("#") &&
                 (line.startsWith("http://") || line.startsWith("https://"))) {
-                result += Channel(name.ifBlank { "Канал" }, line, group, logo, playlistName, tvgId)
+                val channel = Channel(
+                    name = name.ifBlank { "Канал" },
+                    url = line,
+                    group = ChannelPolicy.displayGroup(group),
+                    logo = logo,
+                    playlist = playlistName,
+                    tvgId = tvgId
+                )
+                if (ChannelPolicy.keep(channel)) result += channel
                 name = ""
                 group = "Без категории"
                 logo = null
                 tvgId = ""
             }
         }
-        return result
+        return result.distinctBy { it.url }
     }
 }
