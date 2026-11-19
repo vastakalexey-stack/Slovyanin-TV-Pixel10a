@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
             var error by remember { mutableStateOf("") }
             var selectedGroup by remember { mutableStateOf("Все") }
             val rawChannels = imported.value.filter(ChannelPolicy::keep).map { it.copy(group = ChannelPolicy.displayGroup(it.group)) }
-            val channels = ChannelMerger.merge(rawChannels)
+            val channels = ChannelPolicy.limitRegionalChannels(ChannelMerger.merge(rawChannels))
             val groups = listOf("Все", "Избранное") + channels.map { it.group }.distinct().sorted()
             val shown = channels.filter {
                 (selectedGroup == "Все" || (selectedGroup == "Избранное" && it.url in favorites) || it.group == selectedGroup) &&
