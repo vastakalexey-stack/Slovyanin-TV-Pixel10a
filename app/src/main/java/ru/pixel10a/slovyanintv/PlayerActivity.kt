@@ -116,6 +116,7 @@ class PlayerActivity : ComponentActivity() {
 
         setContent {
             val scope = rememberCoroutineScope()
+            var screenMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
             MaterialTheme(colorScheme = darkColorScheme(
                 primary = PlayerGold, onPrimary = PlayerNight, secondary = Color(0xFF9B7844),
                 background = PlayerNight, onBackground = PlayerParchment, surface = PlayerCharcoal,
@@ -180,9 +181,35 @@ class PlayerActivity : ComponentActivity() {
                                             setKeepContentOnPlayerReset(true)
                                         }
                                     },
-                                    update = { it.player = player },
+                                    update = { view ->
+                                        view.player = player
+                                        view.resizeMode = screenMode
+                                    },
                                     modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black, RoundedCornerShape(12.dp))
                                 )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    listOf(
+                                        "Вписать" to AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                                        "Заполнить" to AspectRatioFrameLayout.RESIZE_MODE_FILL,
+                                        "Увеличить" to AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                    ).forEach { (label, mode) ->
+                                        val selected = screenMode == mode
+                                        OutlinedButton(
+                                            onClick = { screenMode = mode },
+                                            modifier = Modifier.weight(1f),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                                            border = BorderStroke(1.dp, if (selected) PlayerGold else PlayerLine),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = if (selected) PlayerGold else PlayerParchment
+                                            )
+                                        ) {
+                                            Text(label, style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
+                                }
                             }
                         }
 
