@@ -14,7 +14,7 @@ object M3uParser {
         text.lineSequence().forEach { raw ->
             val line = raw.trim()
             if (line.startsWith("#EXTINF", true)) {
-                val attrs = Regex("""([\\w-]+)="([^"]*)"""").findAll(line)
+                val attrs = Regex("""([\w-]+)="([^"]*)"""").findAll(line)
                     .associate { it.groupValues[1].lowercase() to it.groupValues[2] }
                 name = line.substringAfterLast(',', "Канал").trim().ifBlank { "Канал" }
                 group = attrs["group-title"]?.ifBlank { "Без категории" } ?: "Без категории"
