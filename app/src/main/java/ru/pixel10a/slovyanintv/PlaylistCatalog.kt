@@ -21,21 +21,9 @@ val CatalogSources = listOf(
         description = "Список каналов, отнесённых к России"
     ),
     CatalogSource(
-        title = "Спортивные каналы",
-        name = "Каталог IPTV-org — спорт",
-        url = "https://iptv-org.github.io/iptv/categories/sports.m3u",
-        description = "Спортивные трансляции из открытого каталога"
-    ),
-    CatalogSource(
         title = "Музыка и радио",
         name = "Открытый плейлист — музыка",
         url = "https://ngrch.github.io/iptv/music.m3u",
         description = "Сторонний публичный плейлист"
     ),
-    CatalogSource(
-        title = "Детские каналы",
-        name = "Открытый плейлист — мультфильмы",
-        url = "https://ngrch.github.io/iptv/cartoons.m3u",
-        description = "Сторонний публичный плейлист"
-    )
 )
