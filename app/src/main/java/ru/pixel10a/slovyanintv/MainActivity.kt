@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
 
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val imported = mutableStateOf<List<Channel>>(emptyList())
     private val favorites = mutableStateListOf<String>()
