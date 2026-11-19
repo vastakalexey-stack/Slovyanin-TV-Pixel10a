@@ -6,11 +6,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -25,6 +28,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
 
+private val Night = Color(0xFF100F0D)
+private val Charcoal = Color(0xFF1B1915)
+private val Panel = Color(0xFF242019)
+private val Gold = Color(0xFFC49A55)
+private val Parchment = Color(0xFFE8D9BC)
+private val Muted = Color(0xFF9C927F)
+private val Line = Color(0xFF59452B)
+
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     private val imported = mutableStateOf<List<Channel>>(emptyList())
@@ -35,78 +46,223 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var showDialog by remember { mutableStateOf(false) }
+            var showMenu by remember { mutableStateOf(false) }
+            var showSearch by remember { mutableStateOf(false) }
+            var search by remember { mutableStateOf("") }
+            var showSettings by remember { mutableStateOf(false) }
+            var showAbout by remember { mutableStateOf(false) }
             var url by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
             var selectedGroup by remember { mutableStateOf("Все") }
             val channels = imported.value
             val groups = listOf("Все", "Избранное") + channels.map { it.group }.distinct().sorted()
-            val shown = channels.filter { (selectedGroup == "Все" || selectedGroup == "Избранное" && it.url in favorites || it.group == selectedGroup) && (selectedGroup != "Избранное" || it.url in favorites) }
+            val shown = channels.filter {
+                (selectedGroup == "Все" || (selectedGroup == "Избранное" && it.url in favorites) || it.group == selectedGroup) &&
+                    (selectedGroup != "Избранное" || it.url in favorites) &&
+                    (search.isBlank() || it.name.contains(search, true) || it.group.contains(search, true))
+            }
             val scope = rememberCoroutineScope()
-            MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFFC49A55), secondary = Color(0xFF9B7844), background = Color(0xFF11100E), surface = Color(0xFF1D1A16))) {
-                Scaffold(containerColor = Color(0xFF11100E), topBar = {
-                    TopAppBar(title = { Column { Text("СЛОВЯНИН ТВ", fontWeight = FontWeight.Bold); Text("Телевидение в твоём телефоне", style = MaterialTheme.typography.labelSmall, color = Color.Gray) } },
-                        actions = { IconButton(onClick = { showDialog = true }) { Icon(Icons.Default.AddLink, "Добавить плейлист") } },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF191612), titleContentColor = Color(0xFFE7D7B8)))
-                }) { padding ->
+
+            MaterialTheme(colorScheme = darkColorScheme(
+                primary = Gold, onPrimary = Night, secondary = Color(0xFF9B7844),
+                background = Night, onBackground = Parchment, surface = Charcoal,
+                onSurface = Parchment, surfaceVariant = Panel, onSurfaceVariant = Muted,
+                outline = Line
+            )) {
+                Scaffold(
+                    containerColor = Night,
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Column {
+                                    Text("ᚱ  СЛОВЯНИН ТВ  ᚱ", fontWeight = FontWeight.Black, color = Parchment)
+                                    Text("ТЕЛЕВИДЕНИЕ • В ДУХЕ ТРАДИЦИЙ", style = MaterialTheme.typography.labelSmall, color = Gold)
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { showSearch = !showSearch; if (!showSearch) search = "" }) {
+                                    Icon(if (showSearch) Icons.Default.Close else Icons.Default.Search, "Поиск", tint = Gold)
+                                }
+                                Box {
+                                    IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Меню", tint = Gold) }
+                                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Charcoal)) {
+                                        DropdownMenuItem(text = { Text("Мои плейлисты", color = Parchment) }, leadingIcon = { Icon(Icons.Default.PlaylistPlay, null, tint = Gold) }, onClick = { showMenu = false; showSettings = false; showAbout = false })
+                                        DropdownMenuItem(text = { Text("Настройки", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = Gold) }, onClick = { showMenu = false; showSettings = true; showAbout = false })
+                                        DropdownMenuItem(text = { Text("О приложении", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Info, null, tint = Gold) }, onClick = { showMenu = false; showAbout = true; showSettings = false })
+                                    }
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = Charcoal)
+                        )
+                    }
+                ) { padding ->
                     Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-                        Spacer(Modifier.height(14.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Каналы", style = MaterialTheme.typography.headlineSmall, color = Color(0xFFE7D7B8), modifier = Modifier.weight(1f))
-                            TextButton(onClick = { selectedGroup = if (selectedGroup == "Избранное") "Все" else "Избранное" }) { Icon(Icons.Default.Favorite, null); Text("Избранное") }
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AssistChip(onClick = { openFile.launch(arrayOf("*/*")) }, label = { Text("Импорт M3U") }, leadingIcon = { Icon(Icons.Default.FileOpen, null) })
-                            Spacer(Modifier.width(8.dp))
-                            AssistChip(onClick = { showDialog = true }, label = { Text("Добавить по ссылке") }, leadingIcon = { Icon(Icons.Default.Link, null) })
-                        }
                         Spacer(Modifier.height(12.dp))
-                        if (channels.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(groups) { group -> FilterChip(selected = selectedGroup == group, onClick = { selectedGroup = group }, label = { Text(group) }) }
+                        if (showSearch) {
+                            OutlinedTextField(
+                                value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
+                                singleLine = true, label = { Text("Найти канал") },
+                                leadingIcon = { Icon(Icons.Default.Search, null, tint = Gold) },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Gold, unfocusedBorderColor = Line,
+                                    focusedTextColor = Parchment, unfocusedTextColor = Parchment
+                                )
+                            )
+                            Spacer(Modifier.height(10.dp))
                         }
-                        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
-                        if (shown.isEmpty()) {
-                            Spacer(Modifier.height(48.dp))
-                            Icon(Icons.Default.Tv, null, tint = Color(0xFFC49A55), modifier = Modifier.size(54.dp).align(Alignment.CenterHorizontally))
-                            Text(if (channels.isEmpty()) "Пока нет каналов" else "В этой категории пока пусто", color = Color(0xFFE7D7B8), style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 16.dp))
-                            Text("Добавь собственный плейлист M3U/M3U8 или импортируй файл с телефона.", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
-                        } else LazyColumn(contentPadding = PaddingValues(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(shown, key = { it.url }) { channel ->
-                                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF211E19))) {
-                                    Row(Modifier.fillMaxWidth().clickable { startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name)) }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.PlayCircle, null, tint = Color(0xFFC49A55), modifier = Modifier.size(32.dp)); Spacer(Modifier.width(12.dp))
-                                        Column(Modifier.weight(1f)) { Text(channel.name, color = Color(0xFFE7D7B8), fontWeight = FontWeight.SemiBold); Text(channel.group, color = Color.Gray, style = MaterialTheme.typography.labelSmall) }
-                                        IconButton(onClick = { if (channel.url in favorites) favorites.remove(channel.url) else favorites.add(channel.url) }) { Icon(Icons.Default.Favorite, null, tint = if (channel.url in favorites) Color(0xFFC49A55) else Color.Gray) }
+                        if (showSettings) {
+                            SlavicPanel(title = "НАСТРОЙКИ") {
+                                Text("Оформление: славянская ночная тема", color = Parchment)
+                                Text("Палитра: угольный камень, тёплая бронза и пергамент", color = Muted)
+                                Spacer(Modifier.height(8.dp))
+                                Text("Плейлистов добавлено: ${channels.map { it.playlist }.distinct().size}", color = Gold)
+                                Text("Каналов в каталоге: ${channels.size}", color = Parchment)
+                                TextButton(onClick = { showSettings = false }) { Text("Назад к каналам", color = Gold) }
+                            }
+                        } else if (showAbout) {
+                            SlavicPanel(title = "О СЛОВЯНИН ТВ") {
+                                Text("Личный IPTV-плеер для собственных и разрешённых M3U/M3U8-источников.", color = Parchment)
+                                Text("Приложение не содержит готовых нелицензионных списков каналов.", color = Muted)
+                                TextButton(onClick = { showAbout = false }) { Text("Назад к каналам", color = Gold) }
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("КАНАЛЫ", style = MaterialTheme.typography.headlineSmall, color = Parchment, fontWeight = FontWeight.Bold)
+                                    Text("ᛟ  ВАШ МЕДИА-ОБЕРЕГ  ᛟ", style = MaterialTheme.typography.labelSmall, color = Gold)
+                                }
+                                TextButton(onClick = { selectedGroup = if (selectedGroup == "Избранное") "Все" else "Избранное" }) {
+                                    Icon(Icons.Default.Favorite, null, tint = Gold)
+                                    Text("Избранное", color = Parchment)
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { openFile.launch(arrayOf("*/*")) }, border = BorderStroke(1.dp, Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = Parchment)) {
+                                    Icon(Icons.Default.FileOpen, null, tint = Gold); Spacer(Modifier.width(6.dp)); Text("Импорт M3U")
+                                }
+                                Button(onClick = { showDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
+                                    Icon(Icons.Default.AddLink, null); Spacer(Modifier.width(6.dp)); Text("Добавить ссылку")
+                                }
+                            }
+                            Spacer(Modifier.height(12.dp))
+                            if (channels.isNotEmpty()) {
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(groups) { group ->
+                                        FilterChip(
+                                            selected = selectedGroup == group,
+                                            onClick = { selectedGroup = group },
+                                            label = { Text(group) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = Gold, selectedLabelColor = Night,
+                                                labelColor = Parchment, containerColor = Charcoal
+                                            ),
+                                            border = FilterChipDefaults.filterChipBorder(
+                                                enabled = true, selected = selectedGroup == group,
+                                                borderColor = Line, selectedBorderColor = Gold
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Gold, trackColor = Panel)
+                            if (error.isNotBlank()) Text(error, color = Color(0xFFFF8A80), modifier = Modifier.padding(8.dp))
+                            if (shown.isEmpty()) {
+                                Spacer(Modifier.height(40.dp))
+                                SlavicPanel(title = "ᚦ  ПОКА НЕТ КАНАЛОВ  ᚦ") {
+                                    Icon(Icons.Default.Tv, null, tint = Gold, modifier = Modifier.size(48.dp).align(Alignment.CenterHorizontally))
+                                    Text("Добавьте свой плейлист M3U/M3U8 или импортируйте файл с телефона.", color = Parchment)
+                                    Text("Ваши каналы появятся здесь.", color = Muted)
+                                }
+                            } else {
+                                LazyColumn(contentPadding = PaddingValues(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                                    items(shown, key = { it.url }) { channel ->
+                                        Card(
+                                            shape = RoundedCornerShape(14.dp),
+                                            border = BorderStroke(1.dp, Line),
+                                            colors = CardDefaults.cardColors(containerColor = Panel)
+                                        ) {
+                                            Row(
+                                                Modifier.fillMaxWidth().clickable {
+                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name))
+                                                }.padding(13.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(Modifier.size(42.dp).background(Charcoal, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                                                    Icon(Icons.Default.PlayArrow, null, tint = Gold, modifier = Modifier.size(30.dp))
+                                                }
+                                                Spacer(Modifier.width(12.dp))
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(channel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
+                                                    Text(channel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                }
+                                                IconButton(onClick = { if (channel.url in favorites) favorites.remove(channel.url) else favorites.add(channel.url) }) {
+                                                    Icon(Icons.Default.Favorite, null, tint = if (channel.url in favorites) Gold else Muted)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-                if (showDialog) AlertDialog(onDismissRequest = { showDialog = false },
-                    title = { Text("Добавить плейлист") },
-                    text = { Column { Text("Вставь ссылку на свой M3U или M3U8-плейлист."); OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("https://…") }, singleLine = true) } },
-                    confirmButton = { TextButton(enabled = url.startsWith("https://") || url.startsWith("http://"), onClick = {
-                        val link = url.trim(); showDialog = false; loading = true; error = ""
-                        scope.launch {
-                            try {
-                                val body = withContext(Dispatchers.IO) { URL(link).openStream().bufferedReader().use { it.readText() } }
-                                val parsed = M3uParser.parse(body, link.substringAfterLast('/').ifBlank { "Онлайн-плейлист" })
-                                if (parsed.isEmpty()) error = "В плейлисте не найдено каналов."
-                                else imported.value = (channels + parsed).distinctBy { it.url }
-                            } catch (_: Exception) { error = "Не удалось загрузить плейлист. Проверь ссылку и подключение." }
-                            loading = false; url = ""
+                if (showDialog) AlertDialog(
+                    onDismissRequest = { showDialog = false },
+                    containerColor = Charcoal,
+                    titleContentColor = Parchment,
+                    textContentColor = Muted,
+                    title = { Text("ДОБАВИТЬ ПЛЕЙЛИСТ") },
+                    text = {
+                        Column {
+                            Text("Вставьте ссылку на свой M3U или M3U8-плейлист.")
+                            OutlinedTextField(
+                                value = url, onValueChange = { url = it }, label = { Text("https://…") }, singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Gold, unfocusedBorderColor = Line, focusedTextColor = Parchment, unfocusedTextColor = Parchment)
+                            )
                         }
-                    }) { Text("Загрузить") } },
-                    dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Отмена") } })
+                    },
+                    confirmButton = {
+                        TextButton(enabled = url.startsWith("https://") || url.startsWith("http://"), onClick = {
+                            val link = url.trim(); showDialog = false; loading = true; error = ""
+                            scope.launch {
+                                try {
+                                    val body = withContext(Dispatchers.IO) { URL(link).openStream().bufferedReader().use { it.readText() } }
+                                    val parsed = M3uParser.parse(body, link.substringAfterLast('/').ifBlank { "Онлайн-плейлист" })
+                                    if (parsed.isEmpty()) error = "В плейлисте не найдено каналов."
+                                    else imported.value = (channels + parsed).distinctBy { it.url }
+                                } catch (_: Exception) { error = "Не удалось загрузить плейлист. Проверьте ссылку и подключение." }
+                                loading = false; url = ""
+                            }
+                        }) { Text("Загрузить", color = Gold) }
+                    },
+                    dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Отмена", color = Muted) } }
+                )
             }
         }
     }
+
     private fun loadFile(uri: Uri) {
         try {
             val body = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
             imported.value = (imported.value + M3uParser.parse(body, uri.lastPathSegment ?: "Файл")).distinctBy { it.url }
         } catch (_: Exception) { }
+    }
+}
+
+@Composable
+private fun SlavicPanel(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Line),
+        colors = CardDefaults.cardColors(containerColor = Charcoal)
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = {
+            Text("ᛉ  $title  ᛉ", color = Gold, fontWeight = FontWeight.Bold)
+            HorizontalDivider(color = Line)
+            content()
+        })
     }
 }
