@@ -3,6 +3,7 @@ package ru.pixel10a.slovyanintv
 import android.os.Bundle
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
@@ -365,6 +366,10 @@ class PlayerActivity : ComponentActivity() {
                         selected.set(Calendar.MINUTE, minute)
                         selected.set(Calendar.SECOND, 0)
                         selected.set(Calendar.MILLISECOND, 0)
+                        if (selected.timeInMillis >= System.currentTimeMillis()) {
+                            Toast.makeText(this, "Выберите время в прошлом", Toast.LENGTH_SHORT).show()
+                            return@TimePickerDialog
+                        }
                         val archiveUrl = CatchupUrlBuilder.build(
                             liveUrl = liveUrl,
                             mode = mode,
@@ -372,7 +377,7 @@ class PlayerActivity : ComponentActivity() {
                             startMillis = selected.timeInMillis
                         )
                         if (archiveUrl == null) {
-                            playbackError = true
+                            Toast.makeText(this, "Не удалось сформировать ссылку архива для этого канала", Toast.LENGTH_LONG).show()
                             return@TimePickerDialog
                         }
                         retryHandler.removeCallbacksAndMessages(null)
