@@ -237,7 +237,7 @@ class MainActivity : ComponentActivity() {
                                         ) {
                                             Row(
                                                 Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId))
+                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId).putExtra("catchup", channel.catchup).putExtra("catchupSource", channel.catchupSource).putExtra("catchupDays", channel.catchupDays))
                                                 }.padding(13.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
@@ -405,7 +405,7 @@ class MainActivity : ComponentActivity() {
                     group = item.optString("group", "Без категории"),
                     logo = item.optString("logo").takeIf { it.isNotBlank() },
                     playlist = item.optString("playlist"),
-                    tvgId = item.optString("tvgId")
+                    tvgId = item.optString("tvgId"),\n                    catchup = item.optString("catchup"),\n                    catchupSource = item.optString("catchupSource"),\n                    catchupDays = item.optInt("catchupDays", 0)
                 )
             }
             imported.value = restored
@@ -428,7 +428,7 @@ class MainActivity : ComponentActivity() {
                 put("group", channel.group)
                 put("logo", channel.logo ?: "")
                 put("playlist", channel.playlist)
-                put("tvgId", channel.tvgId)
+                put("tvgId", channel.tvgId)\n                put("catchup", channel.catchup)\n                put("catchupSource", channel.catchupSource)\n                put("catchupDays", channel.catchupDays)
             })
         }
         val favoriteArray = JSONArray()
