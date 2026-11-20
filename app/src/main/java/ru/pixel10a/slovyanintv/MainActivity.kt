@@ -107,34 +107,24 @@ class MainActivity : ComponentActivity() {
                     cinemaError = ""
                     scope.launch {
                         try {
-                            val sources = listOf(
-                                "https://raw.githubusercontent.com/Dimonovich/TV/Dimonovich/FREE/TV",
-                                "https://iptv-org.github.io/iptv/index.m3u",
-                                "https://iptv.org.ua/iptv/iptv.m3u",
-                                "https://iptv.org.ua/iptv/ua.m3u",
-                                "http://31.57.108.245:8080/Egorka.⅖_1.m3u",
-                                "http://31.57.108.245:8080/playlist_ilookTV.m3u8",
-                                "http://cdntv.online/hls/k9nmfxjv5wyr/playlist.m3u8"
-                            )
                             val loaded = withContext(Dispatchers.IO) {
-                                sources.mapIndexedNotNull { index, source ->
-                                    runCatching {
-                                        val body = URL(source).openConnection().apply {
-                                            connectTimeout = 12000
-                                            readTimeout = 25000
-                                            setRequestProperty("User-Agent", "SlovyaninTV/1.4 Android")
-                                        }.getInputStream().bufferedReader().use { it.readText() }
-                                        M3uParser.parse(body, "Список пользователя ${index + 1}")
-                                    }.getOrNull()
-                                }.flatten()
+                                val body = assets.open("slava67_combined.m3u").bufferedReader().use { it.readText() }
+                                val parsed = M3uParser.parse(body, "Встроенный каталог кинозалов")
+                                ChannelMerger.merge(parsed)
+                                    .filter { channel ->
+                                        val group = channel.group.trim().lowercase()
+                                        val isCinemaGroup = group.contains("кинозал") ||
+                                            group.contains("kino zal") ||
+                                            group.contains("kino+") ||
+                                            group.contains("фильмы-vpn")
+                                        isCinemaGroup && ChannelPolicy.keep(channel)
+                                    }
+                                    .distinctBy { it.url }
                             }
-                            val onlyUserSources = ChannelMerger.merge(loaded)
-                                .filter(ChannelPolicy::keep)
-                                .distinctBy { it.url }
-                            cinemaChannels = onlyUserSources
-                            if (onlyUserSources.isEmpty()) cinemaError = "Не удалось получить каналы из присланных списков. Проверьте доступность источников."
+                            cinemaChannels = loaded
+                            if (loaded.isEmpty()) cinemaError = "Во встроенном каталоге не найдены каналы кинозалов."
                         } catch (_: Exception) {
-                            cinemaError = "Не удалось загрузить список. Проверьте интернет и попробуйте ещё раз."
+                            cinemaError = "Не удалось прочитать встроенный каталог кинозалов."
                         } finally {
                             cinemaLoading = false
                         }
@@ -192,7 +182,7 @@ class MainActivity : ComponentActivity() {
                         if (showCinema) {
                             SlavicPanel(title = "КИНОЗАЛЫ • МОЙ СПИСОК") {
                                 Text("Киноканалы с фильмами в эфире", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                                Text("Материалы только из твоих сохранённых плейлистов. Спортивные записи исключены; повторяющиеся потоки объединены.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("Каталог кинозалов встроен в приложение и открывается без загрузки внешних списков. Повторяющиеся потоки объединены.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { loadCinemaCatalog() }, enabled = !cinemaLoading, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
                                         Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСКИ")
@@ -271,7 +261,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                                Text("Загружаются только присланные тобой плейлисты. Недоступные источники пропускаются; спортивные каналы отсекаются фильтром приложения.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("Каналы берутся из встроенного каталога; доступность каждого потока зависит от его источника и региона.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 TextButton(onClick = { showCinema = false; cinemaSearch = "" }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else if (showPlaylists) {
