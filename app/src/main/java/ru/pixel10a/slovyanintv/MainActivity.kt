@@ -32,13 +32,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URL
 
-private val Night = Color(0xFF071A1C)
-private val Charcoal = Color(0xFF0D292B)
-private val Panel = Color(0xFF123638)
-private val Gold = Color(0xFF48C6B7)
-private val Parchment = Color(0xFFD7F1EB)
-private val Muted = Color(0xFF8CB6B0)
-private val Line = Color(0xFF285B5B)
+private val Night = Color(0xFF071A2E)
+private val Charcoal = Color(0xFF102B49)
+private val Panel = Color(0xFF183D63)
+private val Gold = Color(0xFF8CCBFF)
+private val Parchment = Color(0xFFE5F4FF)
+private val Muted = Color(0xFFA9CBE8)
+private val Line = Color(0xFF35658F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             MaterialTheme(colorScheme = darkColorScheme(
-                primary = Gold, onPrimary = Night, secondary = Color(0xFF238F86),
+                primary = Gold, onPrimary = Night, secondary = Color(0xFF5BA9E8),
                 background = Night, onBackground = Parchment, surface = Charcoal,
                 onSurface = Parchment, surfaceVariant = Panel, onSurfaceVariant = Muted,
                 outline = Line
