@@ -90,4 +90,18 @@ object XmlTvParser {
 
     private fun normalize(value: String): String =
         value.lowercase(Locale.ROOT).replace(Regex("[^\\p{L}\\p{N}]"), "")
+    fun loadFromSources(addresses: List<String>, tvgId: String, channelName: String): List<TvProgram> {
+        var lastError: Exception? = null
+        addresses.filter { it.isNotBlank() }.distinct().forEach { address ->
+            try {
+                val result = load(address, tvgId, channelName)
+                if (result.isNotEmpty()) return result
+            } catch (error: Exception) {
+                lastError = error
+            }
+        }
+        if (lastError != null) throw lastError as Exception
+        return emptyList()
+    }
+
 }
