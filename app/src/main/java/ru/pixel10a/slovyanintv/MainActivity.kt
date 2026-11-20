@@ -324,7 +324,9 @@ class MainActivity : ComponentActivity() {
                         } else {
                             Card(
                                 modifier = Modifier.fillMaxWidth().clickable {
-                                    startActivity(Intent(this@MainActivity, CinemaActivity::class.java))
+                                    showCinema = true
+                                    cinemaSearch = ""
+                                    if (cinemaChannels.isEmpty()) loadCinemaCatalog()
                                 },
                                 shape = RoundedCornerShape(18.dp),
                                 border = BorderStroke(1.dp, Gold.copy(alpha = 0.65f)),
@@ -338,14 +340,14 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.size(52.dp).background(Charcoal, RoundedCornerShape(14.dp)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.Movie, contentDescription = "Кинотека", tint = Gold, modifier = Modifier.size(30.dp))
+                                        Icon(Icons.Default.Movie, contentDescription = "Кинозалы", tint = Gold, modifier = Modifier.size(30.dp))
                                     }
                                     Spacer(Modifier.width(14.dp))
                                     Column(Modifier.weight(1f)) {
-                                        Text("КИНОТЕКА", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                        Text("Фильмы и подборка для просмотра", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                        Text("КИНОЗАЛЫ", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                        Text("Киноканалы и просмотр в плеере", color = Muted, style = MaterialTheme.typography.bodySmall)
                                     }
-                                    Icon(Icons.Default.ChevronRight, contentDescription = "Открыть кинотеку", tint = Gold)
+                                    Icon(Icons.Default.ChevronRight, contentDescription = "Открыть кинозалы", tint = Gold)
                                 }
                             }
                             Spacer(Modifier.height(16.dp))
