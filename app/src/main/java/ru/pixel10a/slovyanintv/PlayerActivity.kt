@@ -71,6 +71,7 @@ class PlayerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val stream = intent.getStringExtra("url") ?: run { finish(); return }
         val title = intent.getStringExtra("name") ?: "Трансляция"
+        val isCinemaContent = intent.getBooleanExtra("cinemaContent", false)
         streamUrls = intent.getStringArrayListExtra("streamUrls")?.filter { it.startsWith("http://") || it.startsWith("https://") }
             ?.distinct().orEmpty().ifEmpty { listOf(stream) }
         streamLabels = intent.getStringArrayListExtra("streamLabels").orEmpty()
@@ -81,29 +82,30 @@ class PlayerActivity : ComponentActivity() {
         val catchupMode = intent.getStringExtra("catchup").orEmpty()
         val catchupSource = intent.getStringExtra("catchupSource").orEmpty()
         val catchupDays = intent.getIntExtra("catchupDays", 0)
-        showArchiveButton = catchupMode.isNotBlank() && catchupSource.isNotBlank() && !catchupMode.equals("none", true) && !catchupMode.equals("disabled", true)
+        showArchiveButton = !isCinemaContent && catchupMode.isNotBlank() && catchupSource.isNotBlank() && !catchupMode.equals("none", true) && !catchupMode.equals("disabled", true)
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
         epgUrl = prefs.getString("xmltv_url", "https://iptvx.one/epg/epg_lite.xml.gz") ?: "https://iptvx.one/epg/epg_lite.xml.gz"
 
-        // Загружаем телепрограмму автоматически при открытии канала.
-        lifecycleScope.launch {
-            epgLoading = true
-            epgError = ""
-            try {
-                programs = withContext(Dispatchers.IO) {
-                    XmlTvParser.loadFromSources(
-                        listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"),
-                        tvgId,
-                        title
-                    )
+        if (!isCinemaContent) {
+            lifecycleScope.launch {
+                epgLoading = true
+                epgError = ""
+                try {
+                    programs = withContext(Dispatchers.IO) {
+                        XmlTvParser.loadFromSources(
+                            listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"),
+                            tvgId,
+                            title
+                        )
+                    }
+                    if (programs.isEmpty()) {
+                        epgError = "Для этого канала не найдено расписание. Проверьте tvg-id или источник XMLTV."
+                    }
+                } catch (_: Exception) {
+                    epgError = "Не удалось автоматически загрузить телепрограмму. Проверьте подключение или источник XMLTV."
+                } finally {
+                    epgLoading = false
                 }
-                if (programs.isEmpty()) {
-                    epgError = "Для этого канала не найдено расписание. Проверьте tvg-id или источник XMLTV."
-                }
-            } catch (_: Exception) {
-                epgError = "Не удалось автоматически загрузить телепрограмму. Проверьте подключение или источник XMLTV."
-            } finally {
-                epgLoading = false
             }
         }
 
@@ -275,33 +277,35 @@ class PlayerActivity : ComponentActivity() {
                             }
                         }
 
-                        OutlinedButton(
-                            onClick = {
-                                showEpg = true
-                                if (programs.isEmpty() && !epgLoading && epgUrl.isNotBlank()) {
-                                    epgLoading = true
-                                    epgError = ""
-                                    scope.launch {
-                                        try {
-                                            programs = withContext(Dispatchers.IO) {
-                                                XmlTvParser.loadFromSources(listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"), tvgId, title)
+                        if (!isCinemaContent) {
+                            OutlinedButton(
+                                onClick = {
+                                    showEpg = true
+                                    if (programs.isEmpty() && !epgLoading && epgUrl.isNotBlank()) {
+                                        epgLoading = true
+                                        epgError = ""
+                                        scope.launch {
+                                            try {
+                                                programs = withContext(Dispatchers.IO) {
+                                                    XmlTvParser.loadFromSources(listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"), tvgId, title)
+                                                }
+                                                if (programs.isEmpty()) epgError = "Для этого канала в телепрограмме передач не найдено."
+                                            } catch (_: Exception) {
+                                                epgError = "Не удалось загрузить XMLTV. Проверьте источник и подключение к интернету."
+                                            } finally {
+                                                epgLoading = false
                                             }
-                                            if (programs.isEmpty()) epgError = "Для этого канала в телепрограмме передач не найдено."
-                                        } catch (_: Exception) {
-                                            epgError = "Не удалось загрузить XMLTV. Проверьте источник и подключение к интернету."
-                                        } finally {
-                                            epgLoading = false
                                         }
                                     }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            border = BorderStroke(1.dp, PlayerGold),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerGold)
-                        ) {
-                            Icon(Icons.Default.LiveTv, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("ПРОГРАММА ПЕРЕДАЧ")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(1.dp, PlayerGold),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerGold)
+                            ) {
+                                Icon(Icons.Default.LiveTv, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("ПРОГРАММА ПЕРЕДАЧ")
+                            }
                         }
 
                         Card(
