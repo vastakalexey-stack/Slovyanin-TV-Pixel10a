@@ -11,6 +11,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+      SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+      SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,16 +34,35 @@ jobs:
           packages: ''
       - name: Install Android platform and build tools
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
-      - name: Build installable debug APK
+      - name: Configure persistent release signing when available
+        shell: bash
         run: |
+          if [[ -n "$SIGNING_KEYSTORE_BASE64" && -n "$SIGNING_STORE_PASSWORD" && -n "$SIGNING_KEY_ALIAS" && -n "$SIGNING_KEY_PASSWORD" ]]; then
+            echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/slovyanin-release.p12"
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/slovyanin-release.p12" >> "$GITHUB_ENV"
+            echo "HAS_RELEASE_SIGNING=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_RELEASE_SIGNING=false" >> "$GITHUB_ENV"
+          fi
+      - name: Build installable APKs
+        shell: bash
+        run: |
+          set -e
           gradle --no-daemon assembleDebug
           mkdir -p dist
           $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Slovyanin-TV.apk
-      - name: Upload APK
+          cp app/build/outputs/apk/debug/app-debug.apk dist/Slovyanin-TV-debug.apk
+          if [[ "$HAS_RELEASE_SIGNING" == "true" ]]; then
+            if gradle --no-daemon assembleRelease && $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk; then
+              cp app/build/outputs/apk/release/app-release.apk dist/Slovyanin-TV-release.apk
+            else
+              echo "Release signing failed; keeping the verified debug APK as an installable fallback."
+            fi
+          fi
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: Slovyanin-TV
-          path: dist/Slovyanin-TV.apk
+          name: Slovyanin-TV-1.4.7
+          path: dist/*.apk
           if-no-files-found: error
           retention-days: 14
