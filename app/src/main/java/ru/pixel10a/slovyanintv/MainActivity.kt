@@ -148,7 +148,7 @@ class MainActivity : ComponentActivity() {
                                 Box {
                                     IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Меню", tint = Gold) }
                                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Charcoal)) {
-                                        DropdownMenuItem(text = { Text("Кинозалы", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Movie, null, tint = Gold) }, onClick = { showMenu = false; showCinema = true; showSettings = false; showAbout = false; showPlaylists = false; if (cinemaChannels.isEmpty()) loadCinemaCatalog() })
+                                        DropdownMenuItem(text = { Text("Кинозалы", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Movie, null, tint = Gold) }, onClick = { showMenu = false; startActivity(Intent(this@MainActivity, CinemaActivity::class.java)) })
                                         DropdownMenuItem(text = { Text("Мои плейлисты", color = Parchment) }, leadingIcon = { Icon(Icons.Default.PlaylistPlay, null, tint = Gold) }, onClick = { showMenu = false; showSettings = false; showAbout = false; showPlaylists = true })
                                         DropdownMenuItem(text = { Text("Настройки", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = Gold) }, onClick = { showMenu = false; showSettings = true; showAbout = false })
                                         DropdownMenuItem(text = { Text("О приложении", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Info, null, tint = Gold) }, onClick = { showMenu = false; showAbout = true; showSettings = false })
