@@ -33,6 +33,18 @@ val CatalogSources = listOf(
         description = "Список каналов, отнесённых к России"
     ),
     CatalogSource(
+        title = "Список Slava-67 — полный",
+        name = "Slava-67 — avto-full",
+        url = "https://raw.githubusercontent.com/slava-67/TV/refs/heads/IPTV/avto-full.m3u",
+        description = "Полный пользовательский список; сохраняем каналы и потоки с VPN, спортивные каналы исключаются"
+    ),
+    CatalogSource(
+        title = "Список Slava-67 — IPTV TVA",
+        name = "Slava-67 — avto-iptv-tva",
+        url = "https://raw.githubusercontent.com/slava-67/TV/refs/heads/IPTV/avto-iptv-tva.m3u",
+        description = "Каналы и кинозалы, включая потоки с VPN; спортивные каналы исключаются"
+    ),
+    CatalogSource(
         title = "Музыка и радио",
         name = "Открытый плейлист — музыка",
         url = "https://ngrch.github.io/iptv/music.m3u",
