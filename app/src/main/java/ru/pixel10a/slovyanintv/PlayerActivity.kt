@@ -83,7 +83,7 @@ class PlayerActivity : ComponentActivity() {
         val catchupDays = intent.getIntExtra("catchupDays", 0)
         showArchiveButton = catchupMode.isNotBlank() && catchupSource.isNotBlank() && !catchupMode.equals("none", true) && !catchupMode.equals("disabled", true)
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
-        epgUrl = prefs.getString("xmltv_url", "") ?: ""
+        epgUrl = prefs.getString("xmltv_url", "https://iptvx.one/epg/epg_lite.xml.gz") ?: "https://iptvx.one/epg/epg_lite.xml.gz"
 
         player = ExoPlayer.Builder(this).build().also { exo ->
             exo.addListener(object : Player.Listener {
