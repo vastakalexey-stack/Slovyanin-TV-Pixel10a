@@ -41,13 +41,13 @@ import java.util.Date
 import java.util.Calendar
 import java.util.Locale
 
-private val PlayerNight = Color(0xFF100F0D)
-private val PlayerCharcoal = Color(0xFF1B1915)
-private val PlayerPanel = Color(0xFF242019)
-private val PlayerGold = Color(0xFFC49A55)
-private val PlayerParchment = Color(0xFFE8D9BC)
-private val PlayerMuted = Color(0xFF9C927F)
-private val PlayerLine = Color(0xFF59452B)
+private val PlayerNight = Color(0xFF071A2E)
+private val PlayerCharcoal = Color(0xFF102B49)
+private val PlayerPanel = Color(0xFF183D63)
+private val PlayerGold = Color(0xFF8CCBFF)
+private val PlayerParchment = Color(0xFFE5F4FF)
+private val PlayerMuted = Color(0xFFA9CBE8)
+private val PlayerLine = Color(0xFF35658F)
 
 class PlayerActivity : ComponentActivity() {
     private var player: ExoPlayer? = null
@@ -118,7 +118,7 @@ class PlayerActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
             var screenMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
             MaterialTheme(colorScheme = darkColorScheme(
-                primary = PlayerGold, onPrimary = PlayerNight, secondary = Color(0xFF9B7844),
+                primary = PlayerGold, onPrimary = PlayerNight, secondary = Color(0xFF5BA9E8),
                 background = PlayerNight, onBackground = PlayerParchment, surface = PlayerCharcoal,
                 onSurface = PlayerParchment, surfaceVariant = PlayerPanel,
                 onSurfaceVariant = PlayerMuted, outline = PlayerLine
