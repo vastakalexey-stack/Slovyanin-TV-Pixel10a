@@ -148,7 +148,6 @@ class MainActivity : ComponentActivity() {
                                 Box {
                                     IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Меню", tint = Gold) }
                                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Charcoal)) {
-                                        DropdownMenuItem(text = { Text("Кинозалы", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Movie, null, tint = Gold) }, onClick = { showMenu = false; startActivity(Intent(this@MainActivity, CinemaActivity::class.java)) })
                                         DropdownMenuItem(text = { Text("Мои плейлисты", color = Parchment) }, leadingIcon = { Icon(Icons.Default.PlaylistPlay, null, tint = Gold) }, onClick = { showMenu = false; showSettings = false; showAbout = false; showPlaylists = true })
                                         DropdownMenuItem(text = { Text("Настройки", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = Gold) }, onClick = { showMenu = false; showSettings = true; showAbout = false })
                                         DropdownMenuItem(text = { Text("О приложении", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Info, null, tint = Gold) }, onClick = { showMenu = false; showAbout = true; showSettings = false })
@@ -274,6 +273,33 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = { showAbout = false }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    startActivity(Intent(this@MainActivity, CinemaActivity::class.java))
+                                },
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.dp, Gold.copy(alpha = 0.65f)),
+                                colors = CardDefaults.cardColors(containerColor = Panel)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(52.dp).background(Charcoal, RoundedCornerShape(14.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.Movie, contentDescription = "Кинотека", tint = Gold, modifier = Modifier.size(30.dp))
+                                    }
+                                    Spacer(Modifier.width(14.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text("КИНОТЕКА", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                        Text("Фильмы и подборка для просмотра", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    Icon(Icons.Default.ChevronRight, contentDescription = "Открыть кинотеку", tint = Gold)
+                                }
+                            }
+                            Spacer(Modifier.height(16.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text("КАНАЛЫ", style = MaterialTheme.typography.headlineSmall, color = Parchment, fontWeight = FontWeight.Bold)
