@@ -41,6 +41,7 @@ private data class ArchiveFilm(val id: String, val title: String, val year: Stri
     val poster: String get() = "https://archive.org/services/img/" + id
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 class CinemaActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
