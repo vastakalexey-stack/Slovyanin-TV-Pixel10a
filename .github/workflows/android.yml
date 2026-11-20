@@ -46,6 +46,7 @@ jobs:
         run: |
           gradle --no-daemon assembleRelease
           mkdir -p dist
+          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
           cp app/build/outputs/apk/release/app-release.apk dist/Slovyanin-TV.apk
       - name: Build debug APK (temporary signing only)
         if: ${{ env.SIGNING_KEYSTORE_BASE64 == '' || env.SIGNING_STORE_PASSWORD == '' || env.SIGNING_KEY_ALIAS == '' || env.SIGNING_KEY_PASSWORD == '' }}
