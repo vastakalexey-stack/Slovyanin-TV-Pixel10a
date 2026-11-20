@@ -82,7 +82,10 @@ class MainActivity : ComponentActivity() {
             var showPlaylists by remember { mutableStateOf(false) }
             var showAbout by remember { mutableStateOf(false) }
             var showCinema by remember { mutableStateOf(false) }
-            var cinemaUrl by remember { mutableStateOf("") }
+            var cinemaChannels by remember { mutableStateOf<List<Channel>>(emptyList()) }
+            var cinemaLoading by remember { mutableStateOf(false) }
+            var cinemaError by remember { mutableStateOf("") }
+            var cinemaSearch by remember { mutableStateOf("") }
             var channelForActions by remember { mutableStateOf<Channel?>(null) }
             var url by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
@@ -97,6 +100,30 @@ class MainActivity : ComponentActivity() {
                     (search.isBlank() || it.name.contains(search, true) || it.group.contains(search, true))
             }
             val scope = rememberCoroutineScope()
+            val loadCinemaCatalog: () -> Unit = {
+                if (!cinemaLoading) {
+                    cinemaLoading = true
+                    cinemaError = ""
+                    scope.launch {
+                        try {
+                            val body = withContext(Dispatchers.IO) {
+                                URL("https://iptv-org.github.io/iptv/categories/movies.m3u")
+                                    .openConnection().apply {
+                                        connectTimeout = 15000
+                                        readTimeout = 30000
+                                    }.getInputStream().bufferedReader().use { it.readText() }
+                            }
+                            val parsed = M3uParser.parse(body, "Открытые киноканалы IPTV-org")
+                            cinemaChannels = parsed
+                            if (parsed.isEmpty()) cinemaError = "В открытом списке пока не найдено доступных записей."
+                        } catch (_: Exception) {
+                            cinemaError = "Не удалось загрузить список. Проверьте интернет и попробуйте ещё раз."
+                        } finally {
+                            cinemaLoading = false
+                        }
+                    }
+                }
+            }
 
             MaterialTheme(colorScheme = darkColorScheme(
                 primary = Gold, onPrimary = Night, secondary = Color(0xFF5BA9E8),
@@ -121,7 +148,7 @@ class MainActivity : ComponentActivity() {
                                 Box {
                                     IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Меню", tint = Gold) }
                                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }, modifier = Modifier.background(Charcoal)) {
-                                        DropdownMenuItem(text = { Text("Кинозалы", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Movie, null, tint = Gold) }, onClick = { showMenu = false; showCinema = true; showSettings = false; showAbout = false; showPlaylists = false })
+                                        DropdownMenuItem(text = { Text("Кинозалы", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Movie, null, tint = Gold) }, onClick = { showMenu = false; showCinema = true; showSettings = false; showAbout = false; showPlaylists = false; if (cinemaChannels.isEmpty()) loadCinemaCatalog() })
                                         DropdownMenuItem(text = { Text("Мои плейлисты", color = Parchment) }, leadingIcon = { Icon(Icons.Default.PlaylistPlay, null, tint = Gold) }, onClick = { showMenu = false; showSettings = false; showAbout = false; showPlaylists = true })
                                         DropdownMenuItem(text = { Text("Настройки", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Settings, null, tint = Gold) }, onClick = { showMenu = false; showSettings = true; showAbout = false })
                                         DropdownMenuItem(text = { Text("О приложении", color = Parchment) }, leadingIcon = { Icon(Icons.Default.Info, null, tint = Gold) }, onClick = { showMenu = false; showAbout = true; showSettings = false })
@@ -147,13 +174,57 @@ class MainActivity : ComponentActivity() {
                             Spacer(Modifier.height(10.dp))
                         }
                         if (showCinema) {
-                            SlavicPanel(title = "КИНОЗАЛЫ") {
-                                Text("VF Тайны следствия", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                                Text("Эта позиция в AM VISION находится в разделе кинозалов. В APK обнаружена отдельная медиатека с серверной синхронизацией; адреса видео и авторизационные данные в открытом виде не найдены.", color = Muted)
-                                OutlinedTextField(value = cinemaUrl, onValueChange = { cinemaUrl = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Ссылка на разрешённый поток или видео") }, placeholder = { Text("https://…/video.m3u8") }, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Gold, unfocusedBorderColor = Line, focusedTextColor = Parchment, unfocusedTextColor = Parchment))
-                                Button(onClick = { val link = cinemaUrl.trim(); if (link.startsWith("https://") || link.startsWith("http://")) startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", link).putExtra("name", "VF Тайны следствия")) else error = "Введите корректную ссылку http:// или https://" }, enabled = cinemaUrl.startsWith("http://") || cinemaUrl.startsWith("https://"), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night), modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("ОТКРЫТЬ В ПЛЕЕРЕ") }
-                                Text("Автоматическое получение серий пока не подключено: для этого нужен доступ к серверному каталогу AM VISION. Случайные ссылки не подставляем.", color = Muted, style = MaterialTheme.typography.bodySmall)
-                                TextButton(onClick = { showCinema = false; error = "" }) { Text("Назад к каналам", color = Gold) }
+                            SlavicPanel(title = "КИНОЗАЛЫ • ОТКРЫТЫЕ ИСТОЧНИКИ") {
+                                Text("Киноканалы с фильмами в эфире", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                                Text("Это открытые телеканалы категории Movies, а не видеотека отдельных фильмов по запросу. Каждый поток запускается в штатном плеере.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Button(onClick = { loadCinemaCatalog() }, enabled = !cinemaLoading, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
+                                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСОК")
+                                    }
+                                    Text("${cinemaChannels.size} записей", color = Gold, style = MaterialTheme.typography.labelMedium)
+                                }
+                                OutlinedTextField(
+                                    value = cinemaSearch, onValueChange = { cinemaSearch = it },
+                                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                                    label = { Text("Поиск киноканала") },
+                                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Gold) },
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Gold, unfocusedBorderColor = Line, focusedTextColor = Parchment, unfocusedTextColor = Parchment)
+                                )
+                                if (cinemaLoading) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = Gold)
+                                }
+                                if (cinemaError.isNotBlank()) {
+                                    Text(cinemaError, color = Color(0xFFFFB4A9))
+                                }
+                                val filteredCinema = cinemaChannels.filter { cinemaSearch.isBlank() || it.name.contains(cinemaSearch, true) || it.group.contains(cinemaSearch, true) }
+                                if (!cinemaLoading && cinemaChannels.isEmpty() && cinemaError.isBlank()) {
+                                    Text("Нажмите «Обновить список», чтобы загрузить открытые киноканалы.", color = Muted)
+                                }
+                                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    items(filteredCinema, key = { it.url }) { movieChannel ->
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth().clickable {
+                                                startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
+                                                    .putExtra("url", movieChannel.url)
+                                                    .putExtra("name", movieChannel.name))
+                                            },
+                                            colors = CardDefaults.cardColors(containerColor = Panel),
+                                            border = BorderStroke(1.dp, Line)
+                                        ) {
+                                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Movie, null, tint = Gold)
+                                                Spacer(Modifier.width(10.dp))
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
+                                                    Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                }
+                                                Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
+                                            }
+                                        }
+                                    }
+                                }
+                                Text("Список предоставляется IPTV-org. Доступность и права на конкретные потоки зависят от их владельцев.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                TextButton(onClick = { showCinema = false; cinemaSearch = "" }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else if (showPlaylists) {
                             SlavicPanel(title = "МОИ ПЛЕЙЛИСТЫ") {
