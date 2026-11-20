@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,13 +32,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URL
 
-private val Night = Color(0xFF100F0D)
-private val Charcoal = Color(0xFF1B1915)
-private val Panel = Color(0xFF242019)
-private val Gold = Color(0xFFC49A55)
-private val Parchment = Color(0xFFE8D9BC)
-private val Muted = Color(0xFF9C927F)
-private val Line = Color(0xFF59452B)
+private val Night = Color(0xFF071A1C)
+private val Charcoal = Color(0xFF0D292B)
+private val Panel = Color(0xFF123638)
+private val Gold = Color(0xFF48C6B7)
+private val Parchment = Color(0xFFD7F1EB)
+private val Muted = Color(0xFF8CB6B0)
+private val Line = Color(0xFF285B5B)
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -95,7 +96,7 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             MaterialTheme(colorScheme = darkColorScheme(
-                primary = Gold, onPrimary = Night, secondary = Color(0xFF9B7844),
+                primary = Gold, onPrimary = Night, secondary = Color(0xFF238F86),
                 background = Night, onBackground = Parchment, surface = Charcoal,
                 onSurface = Parchment, surfaceVariant = Panel, onSurfaceVariant = Muted,
                 outline = Line
