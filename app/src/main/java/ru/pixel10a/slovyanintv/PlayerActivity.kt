@@ -85,6 +85,28 @@ class PlayerActivity : ComponentActivity() {
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
         epgUrl = prefs.getString("xmltv_url", "https://iptvx.one/epg/epg_lite.xml.gz") ?: "https://iptvx.one/epg/epg_lite.xml.gz"
 
+        // Загружаем телепрограмму автоматически при открытии канала.
+        lifecycleScope.launch {
+            epgLoading = true
+            epgError = ""
+            try {
+                programs = withContext(Dispatchers.IO) {
+                    XmlTvParser.loadFromSources(
+                        listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"),
+                        tvgId,
+                        title
+                    )
+                }
+                if (programs.isEmpty()) {
+                    epgError = "Для этого канала не найдено расписание. Проверьте tvg-id или источник XMLTV."
+                }
+            } catch (_: Exception) {
+                epgError = "Не удалось автоматически загрузить телепрограмму. Проверьте подключение или источник XMLTV."
+            } finally {
+                epgLoading = false
+            }
+        }
+
         player = ExoPlayer.Builder(this).build().also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
@@ -244,17 +266,20 @@ class PlayerActivity : ComponentActivity() {
                         OutlinedButton(
                             onClick = {
                                 showEpg = true
-                                if (programs.isEmpty() && epgUrl.isNotBlank()) {
+                                if (programs.isEmpty() && !epgLoading && epgUrl.isNotBlank()) {
                                     epgLoading = true
                                     epgError = ""
                                     scope.launch {
                                         try {
-                                            programs = withContext(Dispatchers.IO) { XmlTvParser.load(epgUrl, tvgId, title) }
+                                            programs = withContext(Dispatchers.IO) {
+                                                XmlTvParser.loadFromSources(listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"), tvgId, title)
+                                            }
                                             if (programs.isEmpty()) epgError = "Для этого канала в телепрограмме передач не найдено."
-                                        } catch (e: Exception) {
-                                            epgError = "Не удалось загрузить XMLTV. Проверьте адрес и подключение к интернету."
+                                        } catch (_: Exception) {
+                                            epgError = "Не удалось загрузить XMLTV. Проверьте источник и подключение к интернету."
+                                        } finally {
+                                            epgLoading = false
                                         }
-                                        epgLoading = false
                                     }
                                 }
                             },
