@@ -57,8 +57,9 @@ class CinemaActivity : ComponentActivity() {
                         val loaded = withContext(Dispatchers.IO) {
                             val body = assets.open("slava67_combined.m3u").bufferedReader().use { it.readText() }
                             val parsed = M3uParser.parse(body, "Мои присланные плейлисты — Кинотека")
+                                .map { it.copy(name = it.name.substringBefore("|").trim()) }
                             val allowedGroups = setOf(
-                                "kino zal", "kino zal (vpn)", "4k kino zal (vpn)",
+                                "кинозалы", "kino zal", "kino zal (vpn)", "4k kino zal (vpn)",
                                 "kino+📺", "фильмы-vpn"
                             )
                             ChannelMerger.merge(parsed)
