@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
             var cinemaSearch by remember { mutableStateOf("") }
             var cinemaCards by remember { mutableStateOf(false) }
             var channelForActions by remember { mutableStateOf<Channel?>(null) }
+            var groupToDelete by remember { mutableStateOf<String?>(null) }
             var url by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
@@ -374,19 +375,26 @@ class MainActivity : ComponentActivity() {
                             if (channels.isNotEmpty()) {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     items(groups) { group ->
-                                        FilterChip(
-                                            selected = selectedGroup == group,
-                                            onClick = { selectedGroup = group },
-                                            label = { Text(group) },
-                                            colors = FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = Gold, selectedLabelColor = Night,
-                                                labelColor = Parchment, containerColor = Charcoal
-                                            ),
-                                            border = FilterChipDefaults.filterChipBorder(
-                                                enabled = true, selected = selectedGroup == group,
-                                                borderColor = Line, selectedBorderColor = Gold
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            FilterChip(
+                                                selected = selectedGroup == group,
+                                                onClick = { selectedGroup = group },
+                                                label = { Text(group) },
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor = Gold, selectedLabelColor = Night,
+                                                    labelColor = Parchment, containerColor = Charcoal
+                                                ),
+                                                border = FilterChipDefaults.filterChipBorder(
+                                                    enabled = true, selected = selectedGroup == group,
+                                                    borderColor = Line, selectedBorderColor = Gold
+                                                )
                                             )
-                                        )
+                                            if (group != "Все" && group != "Избранное") {
+                                                IconButton(onClick = { groupToDelete = group }) {
+                                                    Icon(Icons.Default.Delete, "Удалить группу $group", tint = Color(0xFFFF8A80))
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -487,6 +495,29 @@ class MainActivity : ComponentActivity() {
                     },
                     confirmButton = { TextButton(onClick = { showCatalogDialog = false }) { Text("Закрыть", color = Gold) } }
                 )
+                groupToDelete?.let { groupName ->
+                    AlertDialog(
+                        onDismissRequest = { groupToDelete = null },
+                        containerColor = Charcoal,
+                        titleContentColor = Parchment,
+                        textContentColor = Muted,
+                        title = { Text("УДАЛИТЬ ГРУППУ?") },
+                        text = { Text("Группа «$groupName» и все каналы в ней будут удалены. Это действие нельзя отменить.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                val urlsToRemove = imported.value.filter { ChannelPolicy.displayGroup(it.group) == groupName }.map { it.url }.toSet()
+                                imported.value = imported.value.filterNot { it.url in urlsToRemove }
+                                favorites.removeAll(urlsToRemove)
+                                if (selectedGroup == groupName) selectedGroup = "Все"
+                                persistData()
+                                groupToDelete = null
+                            }) { Text("Удалить всё", color = Color(0xFFFF8A80)) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { groupToDelete = null }) { Text("Отмена", color = Muted) }
+                        }
+                    )
+                }
                 channelForActions?.let { selectedChannel ->
                     AlertDialog(
                         onDismissRequest = { channelForActions = null },
