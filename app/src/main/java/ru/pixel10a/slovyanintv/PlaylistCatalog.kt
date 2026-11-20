@@ -9,6 +9,12 @@ data class CatalogSource(
 
 val CatalogSources = listOf(
     CatalogSource(
+        title = "Плейлист Egorka",
+        name = "Egorka — пользовательский поток",
+        url = "http://31.57.108.245:8080/Egorka.⅖_1.m3u",
+        description = "Ранее присланный пользователем M3U-источник; доступность проверяется при загрузке"
+    ),
+    CatalogSource(
         title = "Все русскоязычные каналы",
         name = "Каталог IPTV-org — русский язык",
         url = "https://iptv-org.github.io/iptv/languages/rus.m3u",
