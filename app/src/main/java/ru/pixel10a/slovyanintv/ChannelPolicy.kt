@@ -62,6 +62,7 @@ object ChannelPolicy {
         return when {
             key in setOf("без категории", "uncategorized", "other", "others", "undefined", "none") -> "Без категории"
             key.contains("news") || key.contains("новост") -> "Новости"
+            key.contains("kino zal") || key.contains("кинозал") || key.contains("kino+") -> "Кинозалы"
             key.contains("movie") || key.contains("film") || key.contains("кино") || key.contains("фильм") -> "Фильмы"
             key.contains("series") || key.contains("сериал") -> "Сериалы"
             key.contains("child") || key.contains("kids") || key.contains("cartoon") || key.contains("дет") || key.contains("мульт") -> "Детские"
