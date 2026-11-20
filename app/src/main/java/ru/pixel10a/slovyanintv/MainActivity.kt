@@ -678,11 +678,20 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
         try {
             val root = JSONObject(prefs.getString("library", "{}") ?: "{}")
+            // Restore source-language channel names for entries already saved by older builds.
+            // URLs are stable identifiers; names are taken from the bundled original M3U.
+            val originalNamesByUrl = runCatching {
+                assets.open("slava67_combined.m3u").bufferedReader().use { it.readText() }
+                    .let { M3uParser.parse(it, "Исходный плейлист") }
+                    .associate { it.url to it.name }
+            }.getOrDefault(emptyMap())
             val savedChannels = root.optJSONArray("channels") ?: JSONArray()
             val restored = mutableListOf<Channel>()
             for (i in 0 until savedChannels.length()) {
                 val item = savedChannels.optJSONObject(i) ?: continue
-                restored += channelFromJson(item)
+                val saved = channelFromJson(item)
+                val originalName = originalNamesByUrl[saved.url]
+                restored += if (!originalName.isNullOrBlank()) saved.copy(name = originalName) else saved
             }
             imported.value = restored
             val savedFavorites = root.optJSONArray("favorites") ?: JSONArray()
