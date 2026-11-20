@@ -58,14 +58,10 @@ class MainActivity : ComponentActivity() {
         if (imported.value.isEmpty()) {
             lifecycleScope.launch {
                 try {
-                    val body = withContext(Dispatchers.IO) {
-                        URL("https://iptv-org.github.io/iptv/languages/rus.m3u")
-                            .openConnection().apply {
-                                connectTimeout = 15000
-                                readTimeout = 20000
-                            }.getInputStream().bufferedReader().use { it.readText() }
+                    val initialChannels = withContext(Dispatchers.IO) {
+                        val body = assets.open("slava67_combined.m3u").bufferedReader().use { it.readText() }
+                        M3uParser.parse(body, "Мои присланные плейлисты")
                     }
-                    val initialChannels = M3uParser.parse(body, "Каталог IPTV-org — русский язык")
                     if (imported.value.isEmpty() && initialChannels.isNotEmpty()) {
                         imported.value = initialChannels.distinctBy { it.url }
                         persistData()
