@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
             var showAbout by remember { mutableStateOf(false) }
             var showCinema by remember { mutableStateOf(false) }
             var cinemaUrl by remember { mutableStateOf("") }
+            var channelForActions by remember { mutableStateOf<Channel?>(null) }
             var url by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
@@ -250,9 +251,12 @@ class MainActivity : ComponentActivity() {
                                             colors = CardDefaults.cardColors(containerColor = Panel)
                                         ) {
                                             Row(
-                                                Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId).putExtra("catchup", channel.catchup).putExtra("catchupSource", channel.catchupSource).putExtra("catchupDays", channel.catchupDays).putStringArrayListExtra("streamUrls", ArrayList(channel.streams.map { it.url })).putStringArrayListExtra("streamLabels", ArrayList(channel.streams.map { it.label.ifBlank { "Поток" } })))
-                                                }.padding(13.dp),
+                                                Modifier.fillMaxWidth().combinedClickable(
+                                                    onClick = {
+                                                        startActivity(Intent(this@MainActivity, PlayerActivity::class.java).putExtra("url", channel.url).putExtra("name", channel.name).putExtra("tvgId", channel.tvgId).putExtra("catchup", channel.catchup).putExtra("catchupSource", channel.catchupSource).putExtra("catchupDays", channel.catchupDays).putStringArrayListExtra("streamUrls", ArrayList(channel.streams.map { it.url })).putStringArrayListExtra("streamLabels", ArrayList(channel.streams.map { it.label.ifBlank { "Поток" } })))
+                                                    },
+                                                    onLongClick = { channelForActions = channel }
+                                                ).padding(13.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Box(Modifier.size(42.dp).background(Charcoal, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
@@ -326,6 +330,38 @@ class MainActivity : ComponentActivity() {
                     },
                     confirmButton = { TextButton(onClick = { showCatalogDialog = false }) { Text("Закрыть", color = Gold) } }
                 )
+                channelForActions?.let { selectedChannel ->
+                    AlertDialog(
+                        onDismissRequest = { channelForActions = null },
+                        containerColor = Charcoal,
+                        titleContentColor = Parchment,
+                        textContentColor = Muted,
+                        title = { Text(selectedChannel.name) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Переместить канал в группу:")
+                                channels.map { it.group }.distinct().sorted().forEach { targetGroup ->
+                                    TextButton(onClick = {
+                                        imported.value = imported.value.map { item ->
+                                            if (item.url == selectedChannel.url) item.copy(group = targetGroup) else item
+                                        }
+                                        persistData()
+                                        channelForActions = null
+                                    }) { Text(targetGroup, color = Gold) }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                imported.value = imported.value.filterNot { it.url == selectedChannel.url }
+                                favorites.remove(selectedChannel.url)
+                                persistData()
+                                channelForActions = null
+                            }) { Text("Удалить канал", color = Color(0xFFFF8A80)) }
+                        },
+                        dismissButton = { TextButton(onClick = { channelForActions = null }) { Text("Отмена", color = Muted) } }
+                    )
+                }
                 if (showDialog) AlertDialog(
                     onDismissRequest = { showDialog = false },
                     containerColor = Charcoal,
