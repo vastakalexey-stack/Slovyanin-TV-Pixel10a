@@ -8,10 +8,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -28,116 +29,207 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.collect
-import org.json.JSONObject
-import java.net.URL
-import java.net.URLEncoder
 
-private val C_NIGHT = Color(0xFF071A2E)
-private val C_PANEL = Color(0xFF102B49)
-private val C_BLUE = Color(0xFF8CCBFF)
-private val C_TEXT = Color(0xFFE5F4FF)
-private val C_MUTED = Color(0xFFA9CBE8)
+private val CinemaNight = Color(0xFF071A2E)
+private val CinemaPanel = Color(0xFF102B49)
+private val CinemaGold = Color(0xFF8CCBFF)
+private val CinemaText = Color(0xFFE5F4FF)
+private val CinemaMuted = Color(0xFFA9CBE8)
 
-private data class ArchiveFilm(val id: String, val title: String, val year: String) {
-    val poster: String get() = "https://archive.org/services/img/" + id
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 class CinemaActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var films by remember { mutableStateOf<List<ArchiveFilm>>(emptyList()) }
+            var films by remember { mutableStateOf<List<Channel>>(emptyList()) }
             var query by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
-            var page by remember { mutableIntStateOf(1) }
-            var hasMore by remember { mutableStateOf(true) }
-            val gridState = rememberLazyGridState()
+            var cards by remember { mutableStateOf(true) }
             val scope = rememberCoroutineScope()
-            fun load(reset: Boolean) {
+
+            fun loadCinema() {
                 if (loading) return
                 loading = true
                 error = ""
                 scope.launch {
                     try {
-                        val result = withContext(Dispatchers.IO) { searchArchiveFilms(query, if (reset) 1 else page) }
-                        films = if (reset) result else (films + result).distinctBy { it.id }
-                        hasMore = result.isNotEmpty()
-                        page = if (reset) 2 else page + 1
-                        if (films.isEmpty()) error = "Фильмы не найдены. Попробуйте другое название."
+                        val loaded = withContext(Dispatchers.IO) {
+                            val body = assets.open("slava67_combined.m3u").bufferedReader().use { it.readText() }
+                            val parsed = M3uParser.parse(body, "Мои присланные плейлисты — Кинотека")
+                            val allowedGroups = setOf(
+                                "kino zal", "kino zal (vpn)", "4k kino zal (vpn)",
+                                "kino+📺", "фильмы-vpn"
+                            )
+                            ChannelMerger.merge(parsed)
+                                .filter { channel ->
+                                    channel.group.trim().lowercase() in allowedGroups &&
+                                        ChannelPolicy.keep(channel)
+                                }
+                                .distinctBy { it.url }
+                        }
+                        films = loaded
+                        if (loaded.isEmpty()) error = "В сохранённом пользовательском плейлисте не найдены фильмы."
                     } catch (_: Exception) {
-                        error = "Не удалось загрузить видеотеку. Проверьте интернет."
-                    } finally { loading = false }
+                        error = "Не удалось прочитать сохранённый плейлист."
+                    } finally {
+                        loading = false
+                    }
                 }
             }
-            MaterialTheme(colorScheme = darkColorScheme(primary = C_BLUE, background = C_NIGHT, surface = C_PANEL, onSurface = C_TEXT)) {
+
+            val filtered = films.filter {
+                query.isBlank() || it.name.contains(query, true) || it.group.contains(query, true)
+            }
+
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = CinemaGold,
+                    background = CinemaNight,
+                    surface = CinemaPanel,
+                    onSurface = CinemaText
+                )
+            ) {
                 Scaffold(
-                    containerColor = C_NIGHT,
+                    containerColor = CinemaNight,
                     topBar = {
                         TopAppBar(
-                            title = { Column {
-                                Text("ᚱ  КИНОТЕКА  ᚱ", color = C_TEXT, fontWeight = FontWeight.Black)
-                                Text("INTERNET ARCHIVE • PRELINGER", color = C_BLUE, style = MaterialTheme.typography.labelSmall)
-                            } },
-                            navigationIcon = { IconButton(onClick = { finish() }) { Icon(Icons.Default.ArrowBack, "Назад", tint = C_BLUE) } },
-                            colors = TopAppBarDefaults.topAppBarColors(containerColor = C_PANEL)
+                            title = {
+                                Column {
+                                    Text("ᚱ  КИНОТЕКА  ᚱ", color = CinemaText, fontWeight = FontWeight.Black)
+                                    Text("ВАШИ ПЛЕЙЛИСТЫ • КИНОЗАЛЫ", color = CinemaGold, style = MaterialTheme.typography.labelSmall)
+                                }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = { finish() }) {
+                                    Icon(Icons.Default.ArrowBack, "Назад", tint = CinemaGold)
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = { loadCinema() }, enabled = !loading) {
+                                    Icon(Icons.Default.Refresh, "Обновить", tint = CinemaGold)
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(containerColor = CinemaPanel)
                         )
                     }
                 ) { padding ->
-                    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp)) {
-                        Spacer(Modifier.height(10.dp))
-                        Text("Фильмы и исторические киноматериалы", color = C_TEXT, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("Открытая коллекция Internet Archive. Доступность и условия использования указаны на странице каждого материала.", color = C_MUTED, style = MaterialTheme.typography.bodySmall)
+                    Column(
+                        Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         OutlinedTextField(
-                            value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth(),
-                            singleLine = true, label = { Text("Поиск по названию") },
-                            leadingIcon = { Icon(Icons.Default.Search, null, tint = C_BLUE) },
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = C_BLUE, unfocusedBorderColor = C_MUTED, focusedTextColor = C_TEXT, unfocusedTextColor = C_TEXT)
+                            value = query,
+                            onValueChange = { query = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Поиск по названию") },
+                            leadingIcon = { Icon(Icons.Default.Search, null, tint = CinemaGold) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = CinemaGold,
+                                unfocusedBorderColor = CinemaMuted,
+                                focusedTextColor = CinemaText,
+                                unfocusedTextColor = CinemaText
+                            )
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { films = emptyList(); load(true) }, enabled = !loading, colors = ButtonDefaults.buttonColors(containerColor = C_BLUE, contentColor = C_NIGHT)) { Text("НАЙТИ") }
-                            OutlinedButton(onClick = { query = ""; films = emptyList(); load(true) }, enabled = !loading) { Text("ВСЯ КОЛЛЕКЦИЯ", color = C_TEXT) }
-                        }
-                        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = C_BLUE)
-                        if (error.isNotBlank()) Text(error, color = Color(0xFFFFB4A9))
-                        if (films.isEmpty() && !loading && error.isBlank()) LaunchedEffect(Unit) { load(true) }
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 145.dp),
-                            state = gridState,
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                            contentPadding = PaddingValues(vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(films, key = { it.id }) { film ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().clickable { openFilm(film) },
-                                    shape = RoundedCornerShape(14.dp),
-                                    border = BorderStroke(1.dp, Color(0xFF35658F)),
-                                    colors = CardDefaults.cardColors(containerColor = C_PANEL)
-                                ) {
-                                    Column {
-                                        AsyncImage(model = film.poster, contentDescription = film.title, modifier = Modifier.fillMaxWidth().height(185.dp).background(Color(0xFF183D63)), contentScale = ContentScale.Crop)
-                                        Column(Modifier.padding(9.dp)) {
-                                            Text(film.title, color = C_TEXT, fontWeight = FontWeight.SemiBold, maxLines = 2)
-                                            Text(film.year.ifBlank { "Год не указан" }, color = C_MUTED, style = MaterialTheme.typography.labelSmall)
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.PlayCircle, null, tint = C_BLUE, modifier = Modifier.size(18.dp))
-                                                Text("Смотреть", color = C_BLUE, style = MaterialTheme.typography.labelSmall)
+                            FilterChip(selected = cards, onClick = { cards = true }, label = { Text("Карточки") })
+                            FilterChip(selected = !cards, onClick = { cards = false }, label = { Text("Список") })
+                            Spacer(Modifier.weight(1f))
+                            Text("${filtered.size} фильмов", color = CinemaGold, style = MaterialTheme.typography.labelMedium)
+                        }
+                        Text(
+                            "Только материалы из твоего объединённого плейлиста. Внешний каталог Internet Archive не используется.",
+                            color = CinemaMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = CinemaGold)
+                        if (error.isNotBlank()) Text(error, color = Color(0xFFFFB4A9))
+                        if (films.isEmpty() && !loading) {
+                            LaunchedEffect(Unit) { loadCinema() }
+                        }
+                        if (cards) {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 145.dp),
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                contentPadding = PaddingValues(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                                verticalArrangement = Arrangement.spacedBy(9.dp)
+                            ) {
+                                gridItems(filtered, key = { it.url }) { film ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth().clickable { openFilm(film) },
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = BorderStroke(1.dp, Color(0xFF35658F)),
+                                        colors = CardDefaults.cardColors(containerColor = CinemaPanel)
+                                    ) {
+                                        Column {
+                                            if (!film.logo.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = film.logo,
+                                                    contentDescription = film.name,
+                                                    modifier = Modifier.fillMaxWidth().height(112.dp).background(Color(0xFF183D63)),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Box(
+                                                    Modifier.fillMaxWidth().height(112.dp).background(Color(0xFF183D63)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(Icons.Default.Movie, null, tint = CinemaGold, modifier = Modifier.size(42.dp))
+                                                }
+                                            }
+                                            Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(film.name, color = CinemaText, fontWeight = FontWeight.SemiBold, maxLines = 3)
+                                                Text(ChannelPolicy.displayGroup(film.group), color = CinemaMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.PlayCircle, null, tint = CinemaGold, modifier = Modifier.size(18.dp))
+                                                    Text(" Смотреть", color = CinemaGold, style = MaterialTheme.typography.labelSmall)
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
-                        if (loading && films.isNotEmpty()) Text("Загружаем следующие материалы…", color = C_MUTED, style = MaterialTheme.typography.labelSmall)
-                        LaunchedEffect(gridState, films.size, loading, hasMore) {
-                            snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-                                .collect { lastVisible ->
-                                    if (hasMore && !loading && films.isNotEmpty() && lastVisible >= films.size - 6) load(false)
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                contentPadding = PaddingValues(vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                items(filtered, key = { it.url }) { film ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth().clickable { openFilm(film) },
+                                        colors = CardDefaults.cardColors(containerColor = CinemaPanel),
+                                        border = BorderStroke(1.dp, Color(0xFF35658F))
+                                    ) {
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (!film.logo.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = film.logo,
+                                                    contentDescription = film.name,
+                                                    modifier = Modifier.size(62.dp, 48.dp),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Icon(Icons.Default.Movie, null, tint = CinemaGold, modifier = Modifier.size(38.dp))
+                                            }
+                                            Spacer(Modifier.width(10.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text(film.name, color = CinemaText, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                                                Text(ChannelPolicy.displayGroup(film.group), color = CinemaMuted, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                            Icon(Icons.Default.PlayCircle, "Смотреть", tint = CinemaGold)
+                                        }
+                                    }
                                 }
+                            }
                         }
                     }
                 }
@@ -145,58 +237,19 @@ class CinemaActivity : ComponentActivity() {
         }
     }
 
-    private fun openFilm(film: ArchiveFilm) {
-        lifecycleScope.launch {
-            try {
-                val stream = withContext(Dispatchers.IO) { resolveArchiveVideo(film.id) }
-                if (stream == null) {
-                    android.widget.Toast.makeText(this@CinemaActivity, "Совместимый видеофайл не найден.", android.widget.Toast.LENGTH_LONG).show()
-                } else {
-                    startActivity(Intent(this@CinemaActivity, PlayerActivity::class.java).putExtra("url", stream).putExtra("name", film.title))
-                }
-            } catch (_: Exception) {
-                android.widget.Toast.makeText(this@CinemaActivity, "Не удалось открыть видео. Попробуйте позже.", android.widget.Toast.LENGTH_LONG).show()
-            }
-        }
+    private fun openFilm(film: Channel) {
+        val urls = film.streams.map { it.url }.distinct()
+        val labels = film.streams.map { it.label }
+        startActivity(
+            Intent(this, PlayerActivity::class.java)
+                .putExtra("url", film.url)
+                .putExtra("name", film.name)
+                .putStringArrayListExtra("streamUrls", ArrayList(urls))
+                .putStringArrayListExtra("streamLabels", ArrayList(labels))
+                .putExtra("tvgId", film.tvgId)
+                .putExtra("catchup", film.catchup)
+                .putExtra("catchupSource", film.catchupSource)
+                .putExtra("catchupDays", film.catchupDays)
+        )
     }
-}
-
-private fun searchArchiveFilms(search: String, page: Int): List<ArchiveFilm> {
-    val q = if (search.isBlank()) "collection:prelinger AND mediatype:movies" else
-        "collection:prelinger AND mediatype:movies AND title:\"" + search.replace("\"", "") + "\""
-    val encoded = URLEncoder.encode(q, "UTF-8")
-    val address = "https://archive.org/advancedsearch.php?q=" + encoded + "&fl[]=identifier&fl[]=title&fl[]=year&rows=30&page=" + page + "&output=json&sort[]=downloads+desc"
-    val connection = URL(address).openConnection()
-    connection.connectTimeout = 15000
-    connection.readTimeout = 25000
-    connection.setRequestProperty("User-Agent", "SlovyaninTV/1.4 Android media catalog")
-    val root = connection.getInputStream().bufferedReader().use { JSONObject(it.readText()) }
-    val docs = root.optJSONObject("response")?.optJSONArray("docs") ?: return emptyList()
-    return (0 until docs.length()).mapNotNull { i ->
-        val item = docs.optJSONObject(i) ?: return@mapNotNull null
-        val id = item.optString("identifier")
-        if (id.isBlank()) null else ArchiveFilm(id, item.optString("title", id), item.optString("year"))
-    }
-}
-
-private fun resolveArchiveVideo(identifier: String): String? {
-    val connection = URL("https://archive.org/metadata/" + identifier).openConnection()
-    connection.connectTimeout = 15000
-    connection.readTimeout = 25000
-    connection.setRequestProperty("User-Agent", "SlovyaninTV/1.4 Android media catalog")
-    val root = connection.getInputStream().bufferedReader().use { JSONObject(it.readText()) }
-    val files = root.optJSONArray("files") ?: return null
-    val choices = mutableListOf<Pair<Long, String>>()
-    for (i in 0 until files.length()) {
-        val file = files.optJSONObject(i) ?: continue
-        val name = file.optString("name")
-        val format = file.optString("format")
-        if (name.endsWith(".mp4", true) || format.contains("MPEG4", true) || format.contains("h.264", true)) {
-            val size = file.optString("size").toLongOrNull() ?: 0L
-            if (size > 0L) choices += size to name
-        }
-    }
-    val name = choices.maxByOrNull { it.first }?.second ?: return null
-    val safeName = name.split("/").joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-    return "https://archive.org/download/" + identifier + "/" + safeName
 }
