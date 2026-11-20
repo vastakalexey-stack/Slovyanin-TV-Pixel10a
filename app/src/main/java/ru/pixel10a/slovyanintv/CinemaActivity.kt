@@ -245,6 +245,7 @@ class CinemaActivity : ComponentActivity() {
             Intent(this, PlayerActivity::class.java)
                 .putExtra("url", film.url)
                 .putExtra("name", film.name)
+                .putExtra("cinemaContent", true)
                 .putStringArrayListExtra("streamUrls", ArrayList(urls))
                 .putStringArrayListExtra("streamLabels", ArrayList(labels))
                 .putExtra("tvgId", film.tvgId)
