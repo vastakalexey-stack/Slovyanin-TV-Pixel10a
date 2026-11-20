@@ -45,6 +45,8 @@ class MainActivity : ComponentActivity() {
     private val imported = mutableStateOf<List<Channel>>(emptyList())
     private val favorites = mutableStateListOf<String>()
     private val openFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? -> uri?.let { loadFile(it) } }
+    private val createBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? -> uri?.let { exportBackup(it) } }
+    private val openBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? -> uri?.let { importBackup(it) } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,6 +184,16 @@ class MainActivity : ComponentActivity() {
                                 Spacer(Modifier.height(8.dp))
                                 Text("Плейлистов добавлено: ${channels.map { it.playlist }.distinct().size}", color = Gold)
                                 Text("Каналов в каталоге: ${channels.size}", color = Parchment)
+                                Spacer(Modifier.height(8.dp))
+                                Text("РЕЗЕРВНАЯ КОПИЯ", color = Gold, fontWeight = FontWeight.Bold)
+                                Text("Сохраните каналы и избранное в JSON-файл перед обновлением или переносом приложения.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Button(onClick = { createBackup.launch("Slovyanin-TV-backup.json") }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
+                                    Icon(Icons.Default.Save, null); Spacer(Modifier.width(8.dp)); Text("СОХРАНИТЬ РЕЗЕРВНУЮ КОПИЮ")
+                                }
+                                OutlinedButton(onClick = { openBackup.launch(arrayOf("application/json", "text/*", "*/*")) }, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Gold), colors = ButtonDefaults.outlinedButtonColors(contentColor = Parchment)) {
+                                    Icon(Icons.Default.Restore, null); Spacer(Modifier.width(8.dp)); Text("ВОССТАНОВИТЬ ИЗ КОПИИ")
+                                }
+                                Text("Восстановление добавляет каналы и избранное к текущим данным, не удаляя существующие записи.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 TextButton(onClick = { showSettings = false }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else if (showAbout) {
@@ -442,6 +454,81 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun channelToJson(channel: Channel) = JSONObject().apply {
+        put("name", channel.name)
+        put("url", channel.url)
+        put("group", channel.group)
+        put("logo", channel.logo ?: "")
+        put("playlist", channel.playlist)
+        put("tvgId", channel.tvgId)
+        put("catchup", channel.catchup)
+        put("catchupSource", channel.catchupSource)
+        put("catchupDays", channel.catchupDays)
+    }
+
+    private fun channelFromJson(item: JSONObject) = Channel(
+        name = item.optString("name"),
+        url = item.optString("url"),
+        group = item.optString("group", "Без категории"),
+        logo = item.optString("logo").takeIf { it.isNotBlank() },
+        playlist = item.optString("playlist"),
+        tvgId = item.optString("tvgId"),
+        catchup = item.optString("catchup"),
+        catchupSource = item.optString("catchupSource"),
+        catchupDays = item.optInt("catchupDays", 0)
+    )
+
+    private fun backupJson(): JSONObject {
+        val root = JSONObject()
+        val channelArray = JSONArray()
+        imported.value.forEach { channelArray.put(channelToJson(it)) }
+        val favoriteArray = JSONArray()
+        favorites.forEach { favoriteArray.put(it) }
+        root.put("backupVersion", 1)
+        root.put("app", "Slovyanin TV")
+        root.put("createdAt", System.currentTimeMillis())
+        root.put("channels", channelArray)
+        root.put("favorites", favoriteArray)
+        return root
+    }
+
+    private fun exportBackup(uri: Uri) {
+        try {
+            contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { it.write(backupJson().toString(2)) }
+                ?: throw IllegalStateException("Не удалось открыть файл для записи")
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "Не удалось сохранить копию: ${e.localizedMessage ?: "ошибка"}", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun importBackup(uri: Uri) {
+        try {
+            val body = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                ?: throw IllegalStateException("Не удалось прочитать файл")
+            val root = JSONObject(body)
+            if (root.optInt("backupVersion", 0) != 1 || root.optJSONArray("channels") == null) {
+                throw IllegalArgumentException("Это не резервная копия Славянин ТВ")
+            }
+            val array = root.getJSONArray("channels")
+            val restored = mutableListOf<Channel>()
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val channel = channelFromJson(item)
+                if (channel.name.isNotBlank() && (channel.url.startsWith("http://") || channel.url.startsWith("https://"))) restored += channel
+            }
+            imported.value = (imported.value + restored).distinctBy { it.url }
+            val savedFavorites = root.optJSONArray("favorites") ?: JSONArray()
+            for (i in 0 until savedFavorites.length()) {
+                val favorite = savedFavorites.optString(i)
+                if (favorite.isNotBlank() && favorite !in favorites) favorites.add(favorite)
+            }
+            persistData()
+            android.widget.Toast.makeText(this, "Копия восстановлена: добавлено каналов ${restored.size}", android.widget.Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "Не удалось восстановить копию: ${e.localizedMessage ?: "неверный файл"}", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun restoreData() {
         val prefs = getSharedPreferences("slovyanin_tv", MODE_PRIVATE)
         try {
@@ -450,17 +537,7 @@ class MainActivity : ComponentActivity() {
             val restored = mutableListOf<Channel>()
             for (i in 0 until savedChannels.length()) {
                 val item = savedChannels.optJSONObject(i) ?: continue
-                restored += Channel(
-                    name = item.optString("name"),
-                    url = item.optString("url"),
-                    group = item.optString("group", "Без категории"),
-                    logo = item.optString("logo").takeIf { it.isNotBlank() },
-                    playlist = item.optString("playlist"),
-                    tvgId = item.optString("tvgId"),
-                    catchup = item.optString("catchup"),
-                    catchupSource = item.optString("catchupSource"),
-                    catchupDays = item.optInt("catchupDays", 0)
-                )
+                restored += channelFromJson(item)
             }
             imported.value = restored
             val savedFavorites = root.optJSONArray("favorites") ?: JSONArray()
@@ -473,25 +550,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun persistData() {
-        val root = JSONObject()
-        val channelArray = JSONArray()
-        imported.value.forEach { channel ->
-            channelArray.put(JSONObject().apply {
-                put("name", channel.name)
-                put("url", channel.url)
-                put("group", channel.group)
-                put("logo", channel.logo ?: "")
-                put("playlist", channel.playlist)
-                put("tvgId", channel.tvgId)
-                put("catchup", channel.catchup)
-                put("catchupSource", channel.catchupSource)
-                put("catchupDays", channel.catchupDays)
-            })
-        }
-        val favoriteArray = JSONArray()
-        favorites.forEach { favoriteArray.put(it) }
-        root.put("channels", channelArray)
-        root.put("favorites", favoriteArray)
+        val root = backupJson()
         getSharedPreferences("slovyanin_tv", MODE_PRIVATE).edit()
             .putString("library", root.toString()).apply()
     }
