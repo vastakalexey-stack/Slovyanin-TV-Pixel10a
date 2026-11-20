@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -51,6 +52,8 @@ class CinemaActivity : ComponentActivity() {
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
             var page by remember { mutableIntStateOf(1) }
+            var hasMore by remember { mutableStateOf(true) }
+            val gridState = rememberLazyGridState()
             val scope = rememberCoroutineScope()
             fun load(reset: Boolean) {
                 if (loading) return
@@ -60,6 +63,7 @@ class CinemaActivity : ComponentActivity() {
                     try {
                         val result = withContext(Dispatchers.IO) { searchArchiveFilms(query, if (reset) 1 else page) }
                         films = if (reset) result else (films + result).distinctBy { it.id }
+                        hasMore = result.isNotEmpty()
                         page = if (reset) 2 else page + 1
                         if (films.isEmpty()) error = "Фильмы не найдены. Попробуйте другое название."
                     } catch (_: Exception) {
@@ -100,6 +104,7 @@ class CinemaActivity : ComponentActivity() {
                         if (films.isEmpty() && !loading && error.isBlank()) LaunchedEffect(Unit) { load(true) }
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(minSize = 145.dp),
+                            state = gridState,
                             modifier = Modifier.weight(1f).fillMaxWidth(),
                             contentPadding = PaddingValues(vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -126,7 +131,13 @@ class CinemaActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        if (films.isNotEmpty()) TextButton(onClick = { load(false) }, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("ПОКАЗАТЬ ЕЩЁ", color = C_BLUE) }
+                        if (loading && films.isNotEmpty()) Text("Загружаем следующие материалы…", color = C_MUTED, style = MaterialTheme.typography.labelSmall)
+                        LaunchedEffect(gridState, films.size, loading, hasMore) {
+                            snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+                                .collect { lastVisible ->
+                                    if (hasMore && !loading && films.isNotEmpty() && lastVisible >= films.size - 6) load(false)
+                                }
+                        }
                     }
                 }
             }
