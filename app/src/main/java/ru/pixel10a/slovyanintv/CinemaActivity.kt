@@ -36,6 +36,7 @@ private val CinemaGold = Color(0xFF8CCBFF)
 private val CinemaText = Color(0xFFE5F4FF)
 private val CinemaMuted = Color(0xFFA9CBE8)
 
+@OptIn(ExperimentalMaterial3Api::class)
 class CinemaActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
