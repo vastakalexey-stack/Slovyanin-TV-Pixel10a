@@ -110,8 +110,8 @@ class PlayerActivity : ComponentActivity() {
         player = ExoPlayer.Builder(this).build().also { exo ->
             exo.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    if (retryAttempts < 3) {
-                        val delayMs = 1500L * (retryAttempts + 1)
+                    if (retryAttempts < 2) {
+                        val delayMs = 1200L * (retryAttempts + 1)
                         retryAttempts++
                         playbackError = false
                         retryHandler.postDelayed({
@@ -120,6 +120,18 @@ class PlayerActivity : ComponentActivity() {
                                 activePlayer.play()
                             }
                         }, delayMs)
+                    } else if (!isArchivePlayback && selectedStreamIndex < streamUrls.lastIndex) {
+                        selectedStreamIndex++
+                        retryAttempts = 0
+                        playbackError = false
+                        val nextUrl = streamUrls[selectedStreamIndex]
+                        retryHandler.postDelayed({
+                            player?.let { activePlayer ->
+                                activePlayer.setMediaItem(MediaItem.fromUri(nextUrl))
+                                activePlayer.prepare()
+                                activePlayer.play()
+                            }
+                        }, 500L)
                     } else {
                         playbackError = true
                     }
