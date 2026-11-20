@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -86,6 +89,7 @@ class MainActivity : ComponentActivity() {
             var cinemaLoading by remember { mutableStateOf(false) }
             var cinemaError by remember { mutableStateOf("") }
             var cinemaSearch by remember { mutableStateOf("") }
+            var cinemaCards by remember { mutableStateOf(false) }
             var channelForActions by remember { mutableStateOf<Channel?>(null) }
             var url by remember { mutableStateOf("") }
             var loading by remember { mutableStateOf(false) }
@@ -106,16 +110,32 @@ class MainActivity : ComponentActivity() {
                     cinemaError = ""
                     scope.launch {
                         try {
-                            val body = withContext(Dispatchers.IO) {
-                                URL("https://iptv-org.github.io/iptv/categories/movies.m3u")
-                                    .openConnection().apply {
-                                        connectTimeout = 15000
-                                        readTimeout = 30000
-                                    }.getInputStream().bufferedReader().use { it.readText() }
+                            val sources = listOf(
+                                "https://raw.githubusercontent.com/Dimonovich/TV/Dimonovich/FREE/TV",
+                                "https://iptv-org.github.io/iptv/index.m3u",
+                                "https://iptv.org.ua/iptv/iptv.m3u",
+                                "https://iptv.org.ua/iptv/ua.m3u",
+                                "http://31.57.108.245:8080/Egorka.⅖_1.m3u",
+                                "http://31.57.108.245:8080/playlist_ilookTV.m3u8",
+                                "http://cdntv.online/hls/k9nmfxjv5wyr/playlist.m3u8"
+                            )
+                            val loaded = withContext(Dispatchers.IO) {
+                                sources.mapIndexedNotNull { index, source ->
+                                    runCatching {
+                                        val body = URL(source).openConnection().apply {
+                                            connectTimeout = 12000
+                                            readTimeout = 25000
+                                            setRequestProperty("User-Agent", "SlovyaninTV/1.4 Android")
+                                        }.getInputStream().bufferedReader().use { it.readText() }
+                                        M3uParser.parse(body, "Список пользователя ${index + 1}")
+                                    }.getOrNull()
+                                }.flatten()
                             }
-                            val parsed = M3uParser.parse(body, "Открытые киноканалы IPTV-org")
-                            cinemaChannels = parsed
-                            if (parsed.isEmpty()) cinemaError = "В открытом списке пока не найдено доступных записей."
+                            val onlyUserSources = ChannelMerger.merge(loaded)
+                                .filter(ChannelPolicy::keep)
+                                .distinctBy { it.url }
+                            cinemaChannels = onlyUserSources
+                            if (onlyUserSources.isEmpty()) cinemaError = "Не удалось получить каналы из присланных списков. Проверьте доступность источников."
                         } catch (_: Exception) {
                             cinemaError = "Не удалось загрузить список. Проверьте интернет и попробуйте ещё раз."
                         } finally {
@@ -178,9 +198,13 @@ class MainActivity : ComponentActivity() {
                                 Text("Это открытые телеканалы категории Movies, а не видеотека отдельных фильмов по запросу. Каждый поток запускается в штатном плеере.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { loadCinemaCatalog() }, enabled = !cinemaLoading, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
-                                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСОК")
+                                        Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСКИ")
                                     }
-                                    Text("${cinemaChannels.size} записей", color = Gold, style = MaterialTheme.typography.labelMedium)
+                                    Text("${cinemaChannels.size}", color = Gold, style = MaterialTheme.typography.labelMedium)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilterChip(selected = !cinemaCards, onClick = { cinemaCards = false }, label = { Text("Список") })
+                                    FilterChip(selected = cinemaCards, onClick = { cinemaCards = true }, label = { Text("Карточки") })
                                 }
                                 OutlinedTextField(
                                     value = cinemaSearch, onValueChange = { cinemaSearch = it },
@@ -199,30 +223,58 @@ class MainActivity : ComponentActivity() {
                                 if (!cinemaLoading && cinemaChannels.isEmpty() && cinemaError.isBlank()) {
                                     Text("Нажмите «Обновить список», чтобы загрузить открытые киноканалы.", color = Muted)
                                 }
-                                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    items(filteredCinema, key = { it.url }) { movieChannel ->
-                                        Card(
-                                            modifier = Modifier.fillMaxWidth().clickable {
-                                                startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
-                                                    .putExtra("url", movieChannel.url)
-                                                    .putExtra("name", movieChannel.name))
-                                            },
-                                            colors = CardDefaults.cardColors(containerColor = Panel),
-                                            border = BorderStroke(1.dp, Line)
-                                        ) {
-                                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Movie, null, tint = Gold)
-                                                Spacer(Modifier.width(10.dp))
-                                                Column(Modifier.weight(1f)) {
-                                                    Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
-                                                    Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                if (cinemaCards) {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Adaptive(minSize = 145.dp),
+                                        modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        gridItems(filteredCinema, key = { it.url }) { movieChannel ->
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth().clickable {
+                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
+                                                        .putExtra("url", movieChannel.url)
+                                                        .putExtra("name", movieChannel.name))
+                                                },
+                                                colors = CardDefaults.cardColors(containerColor = Panel),
+                                                border = BorderStroke(1.dp, Line)
+                                            ) {
+                                                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                    Icon(Icons.Default.Movie, null, tint = Gold, modifier = Modifier.size(26.dp))
+                                                    Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                                                    Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                                    Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
                                                 }
-                                                Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        items(filteredCinema, key = { it.url }) { movieChannel ->
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth().clickable {
+                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
+                                                        .putExtra("url", movieChannel.url)
+                                                        .putExtra("name", movieChannel.name))
+                                                },
+                                                colors = CardDefaults.cardColors(containerColor = Panel),
+                                                border = BorderStroke(1.dp, Line)
+                                            ) {
+                                                Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(Icons.Default.Movie, null, tint = Gold)
+                                                    Spacer(Modifier.width(10.dp))
+                                                    Column(Modifier.weight(1f)) {
+                                                        Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
+                                                        Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                    }
+                                                    Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
+                                                }
                                             }
                                         }
                                     }
                                 }
-                                Text("Список предоставляется IPTV-org. Доступность и права на конкретные потоки зависят от их владельцев.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("Загружаются только присланные тобой плейлисты. Недоступные источники пропускаются; спортивные каналы отсекаются фильтром приложения.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 TextButton(onClick = { showCinema = false; cinemaSearch = "" }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else if (showPlaylists) {
