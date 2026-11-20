@@ -189,9 +189,9 @@ class MainActivity : ComponentActivity() {
                             Spacer(Modifier.height(10.dp))
                         }
                         if (showCinema) {
-                            SlavicPanel(title = "КИНОЗАЛЫ • ОТКРЫТЫЕ ИСТОЧНИКИ") {
+                            SlavicPanel(title = "КИНОЗАЛЫ • МОЙ СПИСОК") {
                                 Text("Киноканалы с фильмами в эфире", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                                Text("Это открытые телеканалы категории Movies, а не видеотека отдельных фильмов по запросу. Каждый поток запускается в штатном плеере.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("Материалы только из твоих сохранённых плейлистов. Спортивные записи исключены; повторяющиеся потоки объединены.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { loadCinemaCatalog() }, enabled = !cinemaLoading, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
                                         Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСКИ")
