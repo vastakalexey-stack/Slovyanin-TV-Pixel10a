@@ -115,17 +115,11 @@ class MainActivity : ComponentActivity() {
                                 val parsed = M3uParser.parse(body, "Встроенный каталог кинозалов")
                                 ChannelMerger.merge(parsed)
                                     .filter { channel ->
-                                        val group = channel.group.trim().lowercase()
-                                        val isCinemaGroup = group.contains("кинозал") ||
-                                            group.contains("kino zal") ||
-                                            group.contains("kino+") ||
-                                            false
-                                        isCinemaGroup && ChannelPolicy.keep(channel)
+                                        CinemaDirectory.isKnown(channel.name) && ChannelPolicy.keep(channel)
                                     }
                                     .distinctBy { it.url }
                             }
                             cinemaChannels = loaded
-                            if (loaded.isEmpty()) cinemaError = "Во встроенном каталоге не найдены каналы кинозалов."
                         } catch (_: Exception) {
                             cinemaError = "Не удалось прочитать встроенный каталог кинозалов."
                         } finally {
@@ -184,13 +178,13 @@ class MainActivity : ComponentActivity() {
                         }
                         if (showCinema) {
                             SlavicPanel(title = "ТВ-КАНАЛЫ • КИНОЗАЛЫ") {
-                                Text("Телеканалы, работающие в прямом эфире", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                                Text("Список телеканалов кинозалов встроен в приложение. Повторяющиеся потоки объединены.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("КАТАЛОГ КАНАЛОВ ИЗ ТВОИХ СКРИНШОТОВ", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                                Text("Найденные потоки можно запускать. Остальные названия сохранены в каталоге без выдуманных ссылок.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { loadCinemaCatalog() }, enabled = !cinemaLoading, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
                                         Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСКИ")
                                     }
-                                    Text("${cinemaChannels.size}", color = Gold, style = MaterialTheme.typography.labelMedium)
+                                    Text("${CinemaDirectory.entries.size} в каталоге", color = Gold, style = MaterialTheme.typography.labelMedium)
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilterChip(selected = !cinemaCards, onClick = { cinemaCards = false }, label = { Text("Список") })
@@ -209,9 +203,12 @@ class MainActivity : ComponentActivity() {
                                 if (cinemaError.isNotBlank()) {
                                     Text(cinemaError, color = Color(0xFFFFB4A9))
                                 }
-                                val filteredCinema = cinemaChannels.filter { cinemaSearch.isBlank() || it.name.contains(cinemaSearch, true) || it.group.contains(cinemaSearch, true) }
+                                val filteredCinema = CinemaDirectory.entries.filter {
+                                    cinemaSearch.isBlank() || it.name.contains(cinemaSearch, true) || it.family.contains(cinemaSearch, true)
+                                }
+                                Text("В каталоге: ${CinemaDirectory.entries.size} каналов • найдено источников: ${cinemaChannels.size}", color = Gold, style = MaterialTheme.typography.labelMedium)
                                 if (!cinemaLoading && cinemaChannels.isEmpty() && cinemaError.isBlank()) {
-                                    Text("Нажмите «Обновить список», чтобы загрузить ТВ-каналы кинозалов.", color = Muted)
+                                    Text("Названия восстановлены по твоим скриншотам. Для каналов без подтверждённой бесплатной трансляции показана пометка «Источник пока не найден».", color = Muted)
                                 }
                                 if (cinemaCards) {
                                     LazyVerticalGrid(
@@ -220,51 +217,58 @@ class MainActivity : ComponentActivity() {
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        gridItems(filteredCinema, key = { it.url }) { movieChannel ->
+                                        gridItems(filteredCinema, key = { it.name }) { entry ->
+                                            val playable = cinemaChannels.firstOrNull { CinemaDirectory.normalize(it.name) == CinemaDirectory.normalize(entry.name) }
                                             Card(
-                                                modifier = Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
-                                                        .putExtra("url", movieChannel.url)
-                                                        .putExtra("name", movieChannel.name))
+                                                modifier = Modifier.fillMaxWidth().clickable(enabled = playable != null) {
+                                                    playable?.let {
+                                                        startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
+                                                            .putExtra("url", it.url)
+                                                            .putExtra("name", it.name))
+                                                    }
                                                 },
                                                 colors = CardDefaults.cardColors(containerColor = Panel),
                                                 border = BorderStroke(1.dp, Line)
                                             ) {
                                                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    Icon(Icons.Default.LiveTv, null, tint = Gold, modifier = Modifier.size(26.dp))
-                                                    Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold, maxLines = 2)
-                                                    Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                                                    Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
+                                                    Icon(if (playable != null) Icons.Default.LiveTv else Icons.Default.Movie, null, tint = Gold, modifier = Modifier.size(26.dp))
+                                                    Text(entry.name, color = Parchment, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                                                    Text(entry.family, color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                                    Text(if (playable != null) "Источник найден • Смотреть" else "Источник пока не найден", color = if (playable != null) Gold else Muted, style = MaterialTheme.typography.labelSmall)
                                                 }
                                             }
                                         }
                                     }
                                 } else {
                                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        items(filteredCinema, key = { it.url }) { movieChannel ->
+                                        items(filteredCinema, key = { it.name }) { entry ->
+                                            val playable = cinemaChannels.firstOrNull { CinemaDirectory.normalize(it.name) == CinemaDirectory.normalize(entry.name) }
                                             Card(
-                                                modifier = Modifier.fillMaxWidth().clickable {
-                                                    startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
-                                                        .putExtra("url", movieChannel.url)
-                                                        .putExtra("name", movieChannel.name))
+                                                modifier = Modifier.fillMaxWidth().clickable(enabled = playable != null) {
+                                                    playable?.let {
+                                                        startActivity(Intent(this@MainActivity, PlayerActivity::class.java)
+                                                            .putExtra("url", it.url)
+                                                            .putExtra("name", it.name))
+                                                    }
                                                 },
                                                 colors = CardDefaults.cardColors(containerColor = Panel),
                                                 border = BorderStroke(1.dp, Line)
                                             ) {
                                                 Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                    Icon(Icons.Default.Movie, null, tint = Gold)
+                                                    Icon(if (playable != null) Icons.Default.LiveTv else Icons.Default.Movie, null, tint = Gold)
                                                     Spacer(Modifier.width(10.dp))
                                                     Column(Modifier.weight(1f)) {
-                                                        Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold)
-                                                        Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                        Text(entry.name, color = Parchment, fontWeight = FontWeight.SemiBold)
+                                                        Text(entry.family, color = Muted, style = MaterialTheme.typography.labelSmall)
+                                                        Text(if (playable != null) "Источник найден" else "Источник пока не найден", color = if (playable != null) Gold else Muted, style = MaterialTheme.typography.labelSmall)
                                                     }
-                                                    Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
+                                                    if (playable != null) Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
                                                 }
                                             }
                                         }
                                     }
                                 }
-                                Text("Каналы берутся из встроенного каталога; доступность каждого потока зависит от его источника и региона.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text("Нажатие доступно только для каналов с найденным потоком. Остальные появятся в эфире после добавления легального источника.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 TextButton(onClick = { showCinema = false; cinemaSearch = "" }) { Text("Назад к каналам", color = Gold) }
                             }
                         } else if (showPlaylists) {
