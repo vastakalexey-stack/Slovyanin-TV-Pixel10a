@@ -347,7 +347,9 @@ class PlayerActivity : ComponentActivity() {
                             }
                         }
                     }
-                } AlertDialog(
+                }
+
+                if (showStreamPicker) AlertDialog(
                     onDismissRequest = { showStreamPicker = false },
                     containerColor = PlayerCharcoal,
                     titleContentColor = PlayerParchment,
