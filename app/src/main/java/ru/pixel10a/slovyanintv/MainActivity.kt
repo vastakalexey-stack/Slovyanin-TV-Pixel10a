@@ -54,7 +54,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         restoreData()
+        seedFavoritesFromAvailableChannels()
         importIncomingIntent(intent)
+        seedFavoritesFromAvailableChannels()
         if (imported.value.isEmpty()) {
             lifecycleScope.launch {
                 try {
@@ -64,6 +66,7 @@ class MainActivity : ComponentActivity() {
                     }
                     if (imported.value.isEmpty() && initialChannels.isNotEmpty()) {
                         imported.value = initialChannels.distinctBy { it.url }
+                        seedFavoritesFromAvailableChannels()
                         persistData()
                     }
                 } catch (_: Exception) {
@@ -730,6 +733,30 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
             imported.value = emptyList()
             favorites.clear()
+        }
+    }
+
+    /** Add only exact channel-name matches from the user's Favorites screenshot list.
+     * Existing channel groups (including the Kinozaly category) are not changed.
+     */
+    private fun seedFavoritesFromAvailableChannels() {
+        val favoriteSeedNames = setOf(
+            "tnt",
+            "квн тв",
+            "назад в ссср",
+            "мосфильм. золотая коллекция",
+            "шансон тв",
+            "шокирующее",
+            "киноужас",
+            "киноужас hd"
+        )
+        val matchingUrls = imported.value
+            .filter { it.name.trim().lowercase() in favoriteSeedNames }
+            .map { it.url }
+            .filter { it.isNotBlank() && it !in favorites }
+        if (matchingUrls.isNotEmpty()) {
+            favorites.addAll(matchingUrls)
+            persistData()
         }
     }
 
