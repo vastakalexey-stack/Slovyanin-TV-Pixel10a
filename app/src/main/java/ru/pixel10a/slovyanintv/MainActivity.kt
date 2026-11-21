@@ -92,7 +92,10 @@ class MainActivity : ComponentActivity() {
             var loading by remember { mutableStateOf(false) }
             var error by remember { mutableStateOf("") }
             var selectedGroup by remember { mutableStateOf("Все") }
-            val rawChannels = imported.value.filter(ChannelPolicy::keep).map { it.copy(group = ChannelPolicy.displayGroup(it.group)) }
+            val rawChannels = imported.value
+                .filter(ChannelPolicy::keep)
+                .map { it.copy(group = ChannelPolicy.displayGroup(it.group)) }
+                .filterNot { it.group.equals("Фильмы", true) || it.group.equals("Сериалы", true) }
             val channels = ChannelPolicy.limitRegionalChannels(ChannelMerger.merge(rawChannels))
             val groups = listOf("Все", "Избранное") + channels.map { it.group }.distinct().sorted()
             val shown = channels.filter {
