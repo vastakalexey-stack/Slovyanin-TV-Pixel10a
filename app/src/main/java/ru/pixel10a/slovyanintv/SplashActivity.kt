@@ -5,80 +5,70 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 
 class SplashActivity : ComponentActivity() {
+    private var player: ExoPlayer? = null
+    private var openedMain = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = android.graphics.Color.rgb(7, 26, 46)
-        window.navigationBarColor = android.graphics.Color.rgb(7, 26, 46)
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
+
+        val exoPlayer = ExoPlayer.Builder(this).build()
+        player = exoPlayer
+        exoPlayer.setMediaItem(
+            MediaItem.fromUri("android.resource://$packageName/${R.raw.intro}")
+        )
+        exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) openMain()
+            }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                openMain()
+            }
+        })
 
         setContent {
-            val night = Color(0xFF071A2E)
-            val parchment = Color(0xFFE5F4FF)
-            val sky = Color(0xFF8CCBFF)
-            MaterialTheme(colorScheme = darkColorScheme(
-                background = night, surface = Color(0xFF102B49), primary = sky
-            )) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(night),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp)
-                            .border(1.dp, sky.copy(alpha = 0.65f), RoundedCornerShape(22.dp))
-                            .padding(vertical = 54.dp, horizontal = 18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text("ᚱ   ᚷ   ᚱ", color = sky, fontSize = 30.sp, fontFamily = FontFamily.Serif)
-                        Spacer(Modifier.height(24.dp))
-                        Text(
-                            "Галине",
-                            color = parchment,
-                            fontSize = 43.sp,
-                            fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 5.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(22.dp))
-                        Box(Modifier.width(118.dp).height(1.dp).background(sky))
-                        Spacer(Modifier.height(18.dp))
-                        Text(
-                            "СЛАВЯНИН ТВ",
-                            color = sky,
-                            fontSize = 13.sp,
-                            fontFamily = FontFamily.Serif,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 4.sp
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        Text("ᚱ   ᛉ   ᚱ", color = sky, fontSize = 25.sp, fontFamily = FontFamily.Serif)
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { context ->
+                        PlayerView(context).apply {
+                            useController = false
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            player = exoPlayer
+                        }
                     }
-                }
-            }
-
-            LaunchedEffect(Unit) {
-                delay(2_000)
-                startActivity(Intent(this@SplashActivity, MainActivity::class.java))
-                finish()
+                )
             }
         }
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = true
+    }
+
+    private fun openMain() {
+        if (openedMain || isFinishing) return
+        openedMain = true
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
+
+    override fun onDestroy() {
+        player?.release()
+        player = null
+        super.onDestroy()
     }
 }
