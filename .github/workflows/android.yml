@@ -50,35 +50,35 @@ jobs:
           test -s app/src/main/res/raw/intro.mp4
           file app/src/main/res/raw/intro.mp4
           ls -lh app/src/main/res/raw/intro.mp4
-      - name: Configure persistent release signing when available
+      - name: Configure and validate persistent release signing
         shell: bash
         run: |
-          if [[ -n "$SIGNING_KEYSTORE_BASE64" && -n "$SIGNING_STORE_PASSWORD" && -n "$SIGNING_KEY_ALIAS" && -n "$SIGNING_KEY_PASSWORD" ]]; then
-            echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/slovyanin-release.p12"
-            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/slovyanin-release.p12" >> "$GITHUB_ENV"
-            echo "HAS_RELEASE_SIGNING=true" >> "$GITHUB_ENV"
-          else
-            echo "HAS_RELEASE_SIGNING=false" >> "$GITHUB_ENV"
-          fi
-      - name: Build installable APKs
-        shell: bash
-        run: |
-          set -e
-          gradle --no-daemon assembleDebug
-          mkdir -p dist
-          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
-          cp app/build/outputs/apk/debug/app-debug.apk dist/Slovyanin-TV-debug.apk
-          if [[ "$HAS_RELEASE_SIGNING" == "true" ]]; then
-            if gradle --no-daemon assembleRelease && $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk; then
-              cp app/build/outputs/apk/release/app-release.apk dist/Slovyanin-TV-release.apk
-            else
-              echo "Release signing failed; keeping the verified debug APK as an installable fallback."
+          set -euo pipefail
+          for name in SIGNING_KEYSTORE_BASE64 SIGNING_STORE_PASSWORD SIGNING_KEY_ALIAS SIGNING_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Required repository secret $name is missing."
+              exit 1
             fi
-          fi
-      - name: Upload APKs
+          done
+          KEYSTORE="$RUNNER_TEMP/slovyanin-release.p12"
+          printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+          test -s "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$SIGNING_STORE_PASSWORD" -alias "$SIGNING_KEY_ALIAS" >/dev/null
+          echo "SIGNING_STORE_FILE=$KEYSTORE" >> "$GITHUB_ENV"
+      - name: Build signed release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon assembleRelease
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          mkdir -p dist
+          cp "$APK" dist/Slovyanin-TV-1.4.8.apk
+      - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Slovyanin-TV-1.4.7
-          path: dist/*.apk
+          name: Slovyanin-TV-1.4.8
+          path: dist/Slovyanin-TV-1.4.8.apk
           if-no-files-found: error
           retention-days: 14
