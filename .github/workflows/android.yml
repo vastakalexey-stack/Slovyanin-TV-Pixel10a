@@ -74,11 +74,11 @@ jobs:
           test -s "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           mkdir -p dist
-          cp "$APK" dist/Slovyanin-TV-1.4.8.apk
+          cp "$APK" dist/Slovyanin-TV-1.4.9.apk
       - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: Slovyanin-TV-1.4.8
-          path: dist/Slovyanin-TV-1.4.8.apk
+          name: Slovyanin-TV-1.4.9
+          path: dist/Slovyanin-TV-1.4.9.apk
           if-no-files-found: error
           retention-days: 14
