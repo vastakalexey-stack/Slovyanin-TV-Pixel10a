@@ -3641,3 +3641,14 @@ http://185.76.10.53:8080/srv5/tv3_hd/tracks-v1a1/mono.m3u8?cid=144&did=5366158&m
 http://185.76.10.53:8080/srv5/vip_serial_hd/tracks-v1a1/mono.m3u8?cid=144&did=5366158&m=1&rid=24397&token=2022b6576a65c40ede42a7d4941b5471
 #EXTINF:-1 group-title="МОЛДОВА 🇲🇩",Moldova 1
 http://116.202.113.254:8888/Moldova1hd
+
+#EXTINF:-1 group-title="📺 Usba TV" tvg-logo="https://ushba.tv/assets/images/logo-roku1.png" ,Retrovision
+https://rpn3.bozztv.com/dvrfl07/ushba-rvision/tracks-v1a1/mono.m3u8
+#EXTINF:-1 group-title="📺 Usba TV" tvg-logo="https://ushba.tv/assets/images/logo-roku1.png" ,Retrovision Motor
+https://rpn3.bozztv.com/dvrfl07/ushba-rvisionmotor/tracks-v1a1/mono.m3u8
+#EXTINF:-1 group-title="📺 Usba TV" tvg-logo="https://ushba.tv/assets/images/logo-roku1.png" ,Retrovision Кинопанорама
+https://rpn3.bozztv.com/dvrfl07/ushba-rvisionkinopanorama/tracks-v1a1/mono.m3u8
+#EXTINF:-1 group-title="📺 Usba TV" tvg-logo="https://ushba.tv/assets/images/logo-roku1.png" ,Retrovision Movies
+https://rpn3.bozztv.com/dvrfl07/ushba-rvisionmovies/tracks-v1a1/mono.m3u8
+#EXTINF:-1 group-title="📺 Usba TV" tvg-logo="https://ushba.tv/assets/images/logo-roku1.png" ,Retrovision Classic
+https://rpn3.bozztv.com/dvrfl07/ushba-rvisionclassic/tracks-v1a1/mono.m3u8
