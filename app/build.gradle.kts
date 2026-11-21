@@ -6,7 +6,13 @@ plugins {
 android {
     namespace = "ru.pixel10a.slovyanintv"
     compileSdk = 36
-    defaultConfig { applicationId = "ru.pixel10a.slovyanintv"; minSdk = 26; targetSdk = 35; versionCode = 12; versionName = "1.4.7" }
+    defaultConfig {
+        applicationId = "ru.pixel10a.slovyanintv"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 100000 + it } ?: 13
+        versionName = "1.4.8"
+    }
     signingConfigs {
         create("release") {
             val storePath = System.getenv("SIGNING_STORE_FILE")
@@ -23,7 +29,8 @@ android {
             isMinifyEnabled = false
             val hasSigning = listOf("SIGNING_STORE_FILE", "SIGNING_STORE_PASSWORD", "SIGNING_KEY_ALIAS", "SIGNING_KEY_PASSWORD")
                 .all { !System.getenv(it).isNullOrBlank() }
-            if (hasSigning) signingConfig = signingConfigs.getByName("release")
+            check(hasSigning) { "Release signing is required for distributable APKs." }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     buildFeatures { compose = true }
