@@ -8,7 +8,6 @@
         android:theme="@style/Theme.SlovyaninTV"
         android:usesCleartextTraffic="true">
         <activity android:name=".PlayerActivity" android:exported="false" />
-        <activity android:name=".CinemaActivity" android:exported="false" />
         <activity android:name=".SplashActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
