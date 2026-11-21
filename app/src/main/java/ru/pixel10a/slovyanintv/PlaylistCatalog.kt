@@ -23,7 +23,7 @@ val CatalogSources = listOf(
         name = "Slava-67 — объединённый список",
         url = "https://raw.githubusercontent.com/vastakalexey-stack/Slovyanin-TV-Pixel10a/main/app/src/main/assets/slava67_combined.m3u",
         description = "Сохранённый объединённый каталог из ранее присланных списков; спортивные каналы отфильтровываются"
-    ,
+    ),
     CatalogSource(
         title = "Free-TV — открытые каналы мира",
         name = "Free-TV — публичный международный каталог",
