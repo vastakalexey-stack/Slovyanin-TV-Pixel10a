@@ -34,6 +34,15 @@ jobs:
           packages: ''
       - name: Install Android platform and build tools
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Download approved intro video from Google Drive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check gdown==5.2.0
+          mkdir -p app/src/main/res/raw
+          gdown --fuzzy 'https://drive.google.com/file/d/1Ksf26cjRW671X3O3Fkugx1OHwemepIYl/view?usp=drivesdk' -O app/src/main/res/raw/intro.mp4
+          test -s app/src/main/res/raw/intro.mp4
+          file app/src/main/res/raw/intro.mp4
       - name: Verify bundled intro video
         shell: bash
         run: |
