@@ -34,6 +34,21 @@ jobs:
           packages: ''
       - name: Install Android platform and build tools
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Prepare optimized intro video
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          mkdir -p app/src/main/res/raw
+          curl --fail --location --retry 3 --output /tmp/slovyanin-intro-source \
+            'https://drive.usercontent.google.com/download?id=1IX-wTrS1yb81qAqBT0OGTJdOhjq712Mi&export=download&confirm=t'
+          test -s /tmp/slovyanin-intro-source
+          ffmpeg -hide_banner -loglevel error -y -i /tmp/slovyanin-intro-source \
+            -vf "scale=432:912:flags=lanczos,fps=24" -c:v libx264 -preset veryslow \
+            -crf 30 -pix_fmt yuv420p -an -movflags +faststart app/src/main/res/raw/intro.mp4
+          test -s app/src/main/res/raw/intro.mp4
+          ls -lh app/src/main/res/raw/intro.mp4
       - name: Configure persistent release signing when available
         shell: bash
         run: |
