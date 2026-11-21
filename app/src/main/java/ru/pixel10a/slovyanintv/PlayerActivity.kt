@@ -178,88 +178,67 @@ class PlayerActivity : ComponentActivity() {
                     }
                 ) { padding ->
                     Column(
-                        Modifier.fillMaxSize().padding(padding).padding(horizontal = 14.dp, vertical = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        Modifier.fillMaxSize().padding(padding),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        Card(
-                            Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, PlayerGold.copy(alpha = 0.65f)),
-                            colors = CardDefaults.cardColors(containerColor = PlayerPanel)
+                        Row(
+                            Modifier.fillMaxWidth().background(PlayerCharcoal).padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(Modifier.size(34.dp).background(PlayerCharcoal, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.LiveTv, null, tint = PlayerGold)
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(title, color = PlayerParchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                        Text(if (isArchivePlayback) "АРХИВНАЯ ЗАПИСЬ" else "ПРЯМОЙ ЭФИР", color = PlayerGold, style = MaterialTheme.typography.labelSmall)
-                                        if (streamUrls.size > 1 && !isArchivePlayback) {
-                                            Text("АКТИВЕН: ${streamLabels.getOrElse(selectedStreamIndex) { "Поток ${selectedStreamIndex + 1}" }}", color = PlayerMuted, style = MaterialTheme.typography.labelSmall)
-                                        }
-                                    }
-                                    if (streamUrls.size > 1 && !isArchivePlayback) {
-                                        IconButton(onClick = { showStreamPicker = true }) {
-                                            Icon(Icons.Default.SwapHoriz, contentDescription = "Сменить поток", tint = PlayerGold)
-                                        }
-                                    }
-                                }
-                                AndroidView(
-                                    factory = { context ->
-                                        PlayerView(context).apply {
-                                            player = this@PlayerActivity.player
-                                            useController = true
-                                            controllerShowTimeoutMs = 4500
-                                            setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
-                                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                            setKeepContentOnPlayerReset(true)
-                                        }
-                                    },
-                                    update = { view ->
-                                        view.player = player
-                                        view.resizeMode = screenMode
-                                    },
-                                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black, RoundedCornerShape(12.dp))
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    listOf(
-                                        "Вписать" to AspectRatioFrameLayout.RESIZE_MODE_FIT,
-                                        "Заполнить" to AspectRatioFrameLayout.RESIZE_MODE_FILL,
-                                        "Увеличить" to AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                    ).forEach { (label, mode) ->
-                                        val selected = screenMode == mode
-                                        OutlinedButton(
-                                            onClick = { screenMode = mode },
-                                            modifier = Modifier.weight(1f),
-                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
-                                            border = BorderStroke(1.dp, if (selected) PlayerGold else PlayerLine),
-                                            colors = ButtonDefaults.outlinedButtonColors(
-                                                contentColor = if (selected) PlayerGold else PlayerParchment
-                                            )
-                                        ) {
-                                            Text(label, style = MaterialTheme.typography.labelMedium)
-                                        }
-                                    }
+                            Column(Modifier.weight(1f)) {
+                                Text(title, color = PlayerParchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                                Text(if (isArchivePlayback) "АРХИВНАЯ ЗАПИСЬ" else "ПРЯМОЙ ЭФИР", color = PlayerGold, style = MaterialTheme.typography.labelSmall)
+                            }
+                            if (streamUrls.size > 1 && !isArchivePlayback) {
+                                TextButton(onClick = { showStreamPicker = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                                    Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = PlayerGold)
+                                    Text("Поток", color = PlayerGold)
                                 }
                             }
                         }
-
-                        if (showArchiveButton) {
-                            OutlinedButton(
-                                onClick = { openArchivePicker(stream, catchupMode, catchupSource, catchupDays) },
-                                modifier = Modifier.fillMaxWidth(),
-                                border = BorderStroke(1.dp, PlayerGold),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerGold)
-                            ) {
-                                Text("АРХИВ ПЕРЕДАЧ")
+                        AndroidView(
+                            factory = { context ->
+                                PlayerView(context).apply {
+                                    player = this@PlayerActivity.player
+                                    useController = true
+                                    controllerShowTimeoutMs = 4500
+                                    setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING)
+                                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                    setKeepContentOnPlayerReset(true)
+                                }
+                            },
+                            update = { view ->
+                                view.player = player
+                                view.resizeMode = screenMode
+                            },
+                            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color.Black)
+                        )
+                        Row(
+                            Modifier.fillMaxWidth().background(PlayerCharcoal).padding(horizontal = 6.dp, vertical = 3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "Вписать" to AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                                "Заполнить" to AspectRatioFrameLayout.RESIZE_MODE_FILL,
+                                "Увеличить" to AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            ).forEach { (label, mode) ->
+                                val selected = screenMode == mode
+                                TextButton(
+                                    onClick = { screenMode = mode },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp)
+                                ) {
+                                    Text(label, color = if (selected) PlayerGold else PlayerMuted, style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                            if (showArchiveButton) {
+                                TextButton(
+                                    onClick = { openArchivePicker(stream, catchupMode, catchupSource, catchupDays) },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                ) { Text("Архив", color = PlayerGold, style = MaterialTheme.typography.labelMedium) }
                             }
                             if (isArchivePlayback) {
-                                OutlinedButton(
+                                TextButton(
                                     onClick = {
                                         retryAttempts = 0
                                         playbackError = false
@@ -268,70 +247,106 @@ class PlayerActivity : ComponentActivity() {
                                         player?.prepare()
                                         player?.play()
                                     },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    border = BorderStroke(1.dp, PlayerLine),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerParchment)
-                                ) {
-                                    Text("ВЕРНУТЬСЯ К ПРЯМОМУ ЭФИРУ")
-                                }
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                ) { Text("Эфир", color = PlayerGold, style = MaterialTheme.typography.labelMedium) }
                             }
                         }
-
+                        if (playbackError) {
+                            Text(
+                                "Не удалось запустить поток. Проверьте источник или попробуйте другой поток.",
+                                color = Color(0xFFFFB4A9),
+                                modifier = Modifier.fillMaxWidth().background(PlayerCharcoal).padding(10.dp)
+                            )
+                        }
                         if (!isCinemaContent) {
-                            OutlinedButton(
-                                onClick = {
-                                    showEpg = true
-                                    if (programs.isEmpty() && !epgLoading && epgUrl.isNotBlank()) {
-                                        epgLoading = true
-                                        epgError = ""
-                                        scope.launch {
-                                            try {
-                                                programs = withContext(Dispatchers.IO) {
-                                                    XmlTvParser.loadFromSources(listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"), tvgId, title)
+                            Row(
+                                Modifier.fillMaxWidth().background(PlayerNight).padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("ᛉ  ПРОГРАММА ПЕРЕДАЧ  ᛉ", color = PlayerGold, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                                    Text("Автоматическое расписание канала", color = PlayerMuted, style = MaterialTheme.typography.labelSmall)
+                                }
+                                TextButton(onClick = { showEpgSettings = true }) {
+                                    Text("Источник", color = PlayerGold)
+                                }
+                            }
+                            HorizontalDivider(color = PlayerLine)
+                            when {
+                                epgLoading -> {
+                                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = PlayerGold)
+                                    Text("Загружаем телепрограмму…", color = PlayerMuted, modifier = Modifier.padding(12.dp))
+                                }
+                                epgError.isNotBlank() -> {
+                                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(epgError, color = Color(0xFFFFB4A9))
+                                        TextButton(onClick = {
+                                            if (!epgLoading) {
+                                                epgLoading = true
+                                                epgError = ""
+                                                scope.launch {
+                                                    try {
+                                                        programs = withContext(Dispatchers.IO) {
+                                                            XmlTvParser.loadFromSources(listOf(epgUrl, "https://epg.klimedia.pro/epg.xml"), tvgId, title)
+                                                        }
+                                                        if (programs.isEmpty()) epgError = "Для этого канала расписание не найдено."
+                                                    } catch (_: Exception) {
+                                                        epgError = "Не удалось загрузить телепрограмму."
+                                                    } finally {
+                                                        epgLoading = false
+                                                    }
                                                 }
-                                                if (programs.isEmpty()) epgError = "Для этого канала в телепрограмме передач не найдено."
-                                            } catch (_: Exception) {
-                                                epgError = "Не удалось загрузить XMLTV. Проверьте источник и подключение к интернету."
-                                            } finally {
-                                                epgLoading = false
                                             }
+                                        }) { Text("Повторить загрузку", color = PlayerGold) }
+                                    }
+                                }
+                                programs.isEmpty() -> {
+                                    Text("Для канала пока нет данных телепрограммы.", color = PlayerMuted, modifier = Modifier.padding(12.dp))
+                                }
+                                else -> {
+                                    val now = System.currentTimeMillis()
+                                    val visiblePrograms = programs.filter { it.stop > now }
+                                    LazyColumn(
+                                        Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                                    ) {
+                                        items(visiblePrograms) { item ->
+                                            val current = now in item.start..item.stop
+                                            Column(
+                                                Modifier.fillMaxWidth()
+                                                    .background(if (current) PlayerPanel else Color.Transparent, RoundedCornerShape(8.dp))
+                                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        "${clock(item.start)}–${clock(item.stop)}",
+                                                        color = if (current) PlayerGold else PlayerMuted,
+                                                        fontWeight = FontWeight.Bold,
+                                                        style = MaterialTheme.typography.labelMedium
+                                                    )
+                                                    if (current) {
+                                                        Spacer(Modifier.width(8.dp))
+                                                        Text("СЕЙЧАС", color = PlayerGold, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                                Text(item.title, color = PlayerParchment, fontWeight = if (current) FontWeight.Bold else FontWeight.Medium)
+                                                if (item.description.isNotBlank()) {
+                                                    Text(item.description, color = PlayerMuted, style = MaterialTheme.typography.bodySmall)
+                                                }
+                                            }
+                                            HorizontalDivider(color = PlayerLine.copy(alpha = 0.55f))
                                         }
                                     }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                border = BorderStroke(1.dp, PlayerGold),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = PlayerGold)
-                            ) {
-                                Icon(Icons.Default.LiveTv, null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("ПРОГРАММА ПЕРЕДАЧ")
-                            }
-                        }
-
-                        Card(
-                            Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, PlayerLine),
-                            colors = CardDefaults.cardColors(containerColor = PlayerCharcoal)
-                        ) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("ᚦ  ИНФОРМАЦИЯ О ТРАНСЛЯЦИИ  ᚦ", color = PlayerGold, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
-                                HorizontalDivider(color = PlayerLine)
-                                if (playbackError) {
-                                    Text("Не удалось запустить этот поток. Возможно, источник временно недоступен, ссылка устарела или требуется авторизация.", color = Color(0xFFFFB4A9))
-                                    TextButton(onClick = { retryAttempts = 0; playbackError = false; player?.seekTo(0); player?.prepare(); player?.play() }) {
-                                        Text("Повторить запуск", color = PlayerGold)
-                                    }
-                                } else {
-                                    Text("Управление воспроизведением доступно на панели плеера. Нажмите на видео, чтобы показать или скрыть кнопки.", color = PlayerParchment)
                                 }
-                                Text("ᛟ  СЛАВЯНСКАЯ НОЧНАЯ ТЕМА  •  ЗОЛОТО И ПЕРГАМЕНТ", color = PlayerMuted, style = MaterialTheme.typography.labelSmall)
+                            }
+                        } else {
+                            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Text("КИНОЗАЛ  •  ПРИЯТНОГО ПРОСМОТРА", color = PlayerGold, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                }
-
-                if (showStreamPicker) AlertDialog(
+                } AlertDialog(
                     onDismissRequest = { showStreamPicker = false },
                     containerColor = PlayerCharcoal,
                     titleContentColor = PlayerParchment,
