@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                                         val isCinemaGroup = group.contains("кинозал") ||
                                             group.contains("kino zal") ||
                                             group.contains("kino+") ||
-                                            group.contains("фильмы-vpn")
+                                            false
                                         isCinemaGroup && ChannelPolicy.keep(channel)
                                     }
                                     .distinctBy { it.url }
@@ -180,9 +180,9 @@ class MainActivity : ComponentActivity() {
                             Spacer(Modifier.height(10.dp))
                         }
                         if (showCinema) {
-                            SlavicPanel(title = "КИНОЗАЛЫ • МОЙ СПИСОК") {
-                                Text("Киноканалы с фильмами в эфире", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                                Text("Каталог кинозалов встроен в приложение и открывается без загрузки внешних списков. Повторяющиеся потоки объединены.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                            SlavicPanel(title = "ТВ-КАНАЛЫ • КИНОЗАЛЫ") {
+                                Text("Телеканалы, работающие в прямом эфире", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                                Text("Список телеканалов кинозалов встроен в приложение. Повторяющиеся потоки объединены.", color = Muted, style = MaterialTheme.typography.bodySmall)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Button(onClick = { loadCinemaCatalog() }, enabled = !cinemaLoading, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Night)) {
                                         Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(6.dp)); Text(if (cinemaLoading) "ЗАГРУЗКА…" else "ОБНОВИТЬ СПИСКИ")
@@ -196,7 +196,7 @@ class MainActivity : ComponentActivity() {
                                 OutlinedTextField(
                                     value = cinemaSearch, onValueChange = { cinemaSearch = it },
                                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                                    label = { Text("Поиск киноканала") },
+                                    label = { Text("Поиск ТВ-канала") },
                                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Gold) },
                                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Gold, unfocusedBorderColor = Line, focusedTextColor = Parchment, unfocusedTextColor = Parchment)
                                 )
@@ -208,7 +208,7 @@ class MainActivity : ComponentActivity() {
                                 }
                                 val filteredCinema = cinemaChannels.filter { cinemaSearch.isBlank() || it.name.contains(cinemaSearch, true) || it.group.contains(cinemaSearch, true) }
                                 if (!cinemaLoading && cinemaChannels.isEmpty() && cinemaError.isBlank()) {
-                                    Text("Нажмите «Обновить список», чтобы загрузить открытые киноканалы.", color = Muted)
+                                    Text("Нажмите «Обновить список», чтобы загрузить ТВ-каналы кинозалов.", color = Muted)
                                 }
                                 if (cinemaCards) {
                                     LazyVerticalGrid(
@@ -228,7 +228,7 @@ class MainActivity : ComponentActivity() {
                                                 border = BorderStroke(1.dp, Line)
                                             ) {
                                                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    Icon(Icons.Default.Movie, null, tint = Gold, modifier = Modifier.size(26.dp))
+                                                    Icon(Icons.Default.LiveTv, null, tint = Gold, modifier = Modifier.size(26.dp))
                                                     Text(movieChannel.name, color = Parchment, fontWeight = FontWeight.SemiBold, maxLines = 2)
                                                     Text(movieChannel.group, color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                                                     Icon(Icons.Default.PlayCircle, "Смотреть", tint = Gold)
@@ -330,12 +330,12 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.size(52.dp).background(Charcoal, RoundedCornerShape(14.dp)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.Movie, contentDescription = "Кинозалы", tint = Gold, modifier = Modifier.size(30.dp))
+                                        Icon(Icons.Default.Movie, contentDescription = "ТВ-каналы кинозалов", tint = Gold, modifier = Modifier.size(30.dp))
                                     }
                                     Spacer(Modifier.width(14.dp))
                                     Column(Modifier.weight(1f)) {
-                                        Text("КИНОЗАЛЫ", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                        Text("Киноканалы и просмотр в плеере", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                        Text("КИНОЗАЛЫ • ТВ-КАНАЛЫ", color = Parchment, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                        Text("Тематические телеканалы в прямом эфире", color = Muted, style = MaterialTheme.typography.bodySmall)
                                     }
                                     Icon(Icons.Default.ChevronRight, contentDescription = "Открыть кинозалы", tint = Gold)
                                 }
