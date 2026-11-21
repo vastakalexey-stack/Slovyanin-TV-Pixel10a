@@ -10,8 +10,9 @@ android {
         applicationId = "ru.pixel10a.slovyanintv"
         minSdk = 26
         targetSdk = 35
-        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()?.let { 100000 + it } ?: 13
-        versionName = "1.4.9"
+        val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = buildNumber?.let { 100000 + it } ?: 13
+        versionName = buildNumber?.let { "1.4.9+$it" } ?: "1.4.9"
     }
     signingConfigs {
         create("release") {
